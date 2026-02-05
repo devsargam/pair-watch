@@ -173,9 +173,12 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("call-end");
   });
 
-  socket.on("player-reaction", (payload) => {
+  socket.on("player-reaction", (payload, ack) => {
     if (!payload || !payload.emoji) return;
     io.emit("player-reaction", payload);
+    if (typeof ack === "function") {
+      ack({ ok: true });
+    }
   });
 
   socket.on("disconnect", () => {

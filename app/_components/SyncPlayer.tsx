@@ -596,7 +596,11 @@ export default function SyncPlayer() {
   }
 
   function emitPlayerReaction(emoji: string) {
-    socketRef.current?.emit("player-reaction", { emoji });
+    socketRef.current?.emit("player-reaction", { emoji }, (ack: { ok?: boolean }) => {
+      if (ack?.ok) {
+        logDebug(`reaction-ack:${emoji}`);
+      }
+    });
     logDebug(`emit-reaction:${emoji}`);
   }
 
