@@ -84,6 +84,7 @@ async function init() {
       applyRemoteState(pendingRemoteState);
       pendingRemoteState = null;
     }
+    showFirstTextTrack();
   });
 
   socket.on("room-info", ({ count }) => {
@@ -312,11 +313,19 @@ function addSubtitleTracks(subtitles) {
     track.default = index === 0;
     player.appendChild(track);
   });
+  showFirstTextTrack();
 }
 
 function subtitleLabel(file, index) {
   const name = file.replace(/\.[^.]+$/, "");
   return name || `Sub ${index + 1}`;
+}
+
+function showFirstTextTrack() {
+  if (!player.textTracks || player.textTracks.length === 0) return;
+  Array.from(player.textTracks).forEach((track, idx) => {
+    track.mode = idx === 0 ? "showing" : "hidden";
+  });
 }
 
 function cacheState(state) {

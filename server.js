@@ -195,14 +195,18 @@ function isSubtitleFile(name) {
 
 function normalizeName(name) {
   const base = path.basename(name, path.extname(name));
-  const cleaned = base
-    .toLowerCase()
-    .replace(/s(\d{1,2})\s*e(\d{1,2})/g, "$1x$2")
+  const cleaned = base.toLowerCase();
+  const normalized = cleaned
+    .replace(/s(\d{1,2})\s*e(\d{1,2})/g, (_m, s, e) => `s${Number(s)}e${Number(e)}`)
+    .replace(/(\d{1,2})x(\d{1,2})/g, (_m, s, e) => `s${Number(s)}e${Number(e)}`)
     .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\b(480p|720p|1080p|2160p|4k|hdr|dvdrip|hdtv|webrip|webdl|bluray|bdrip|x264|x265|h264|h265|aac|dts|subs|sub|eng|en)\b/g, " ")
+    .replace(
+      /\b(480p|720p|1080p|2160p|4k|hdr|dvdrip|hdtv|webrip|webdl|bluray|bdrip|x264|x265|h264|h265|aac|dts|subs|sub|eng|en)\b/g,
+      " "
+    )
     .replace(/\s+/g, " ")
     .trim();
-  return cleaned;
+  return normalized;
 }
 
 async function buildSubtitleMap() {
