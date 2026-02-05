@@ -53,6 +53,7 @@ export default function SyncPlayer() {
   const serverVersionRef = useRef<string | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const makingOfferRef = useRef(false);
 
   const [videos, setVideos] = useState<VideoEntry[]>([]);
   const [selectedVideo, setSelectedVideo] = useState("");
@@ -113,7 +114,17 @@ export default function SyncPlayer() {
     socket.on("call-offer", async ({ offer }) => {
       if (!offer) return;
       await ensurePeerConnection();
-      await peerConnectionRef.current?.setRemoteDescription(offer);
+      const pc = peerConnectionRef.current;
+      if (!pc) return;
+      const readyForOffer = pc.signalingState === "stable" || pc.signalingState === "have-local-offer";
+      if (!readyForOffer) {
+        try {
+          await pc.setLocalDescription({ type: "rollback" });
+        } catch {
+          // ignore rollback failures
+        }
+      }
+      await pc.setRemoteDescription(offer);
       const answer = await peerConnectionRef.current?.createAnswer();
       if (!answer) return;
       await peerConnectionRef.current?.setLocalDescription(answer);
@@ -382,11 +393,18 @@ export default function SyncPlayer() {
   }
 
   async function startCall() {
+    const pc = peerConnectionRef.current;
+    if (pc && pc.signalingState !== "closed") return;
     await ensurePeerConnection();
-    const offer = await peerConnectionRef.current?.createOffer();
+    const connection = peerConnectionRef.current;
+    if (!connection) return;
+    if (connection.signalingState !== "stable") return;
+    makingOfferRef.current = true;
+    const offer = await connection.createOffer();
     if (!offer) return;
-    await peerConnectionRef.current?.setLocalDescription(offer);
+    await connection.setLocalDescription(offer);
     socketRef.current?.emit("call-offer", { offer });
+    makingOfferRef.current = false;
   }
 
   async function ensurePeerConnection() {
@@ -415,6 +433,21 @@ export default function SyncPlayer() {
       peerConnectionRef.current.onicecandidate = (event) => {
         if (event.candidate) {
           socketRef.current?.emit("call-ice", { candidate: event.candidate });
+        }
+      };
+
+      peerConnectionRef.current.onnegotiationneeded = async () => {
+        if (!peerConnectionRef.current || makingOfferRef.current) return;
+        if (peerConnectionRef.current.signalingState !== "stable") return;
+        try {
+          makingOfferRef.current = true;
+          const offer = await peerConnectionRef.current.createOffer();
+          await peerConnectionRef.current.setLocalDescription(offer);
+          socketRef.current?.emit("call-offer", { offer });
+        } catch {
+          // ignore renegotiation errors
+        } finally {
+          makingOfferRef.current = false;
         }
       };
     }
