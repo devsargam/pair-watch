@@ -52,6 +52,7 @@ type FloatingReaction = {
 
 export default function SyncPlayer() {
   const playerRef = useRef<HTMLVideoElement | null>(null);
+  const playerWrapRef = useRef<HTMLDivElement | null>(null);
   const localCallRef = useRef<HTMLVideoElement | null>(null);
   const remoteCallRef = useRef<HTMLVideoElement | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -76,6 +77,7 @@ export default function SyncPlayer() {
   const [hlsNote, setHlsNote] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [floatingReactions, setFloatingReactions] = useState<FloatingReaction[]>([]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const selectedEntry = useMemo(
     () => videos.find((video) => video.name === selectedVideo) ?? null,
@@ -199,11 +201,16 @@ export default function SyncPlayer() {
     }, VERSION_POLL_MS);
 
     window.addEventListener("beforeunload", handleBeforeUnload);
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
 
     return () => {
       window.clearInterval(heartbeat);
       window.clearInterval(versionPoll);
       window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
       socket.disconnect();
     };
   }, []);
@@ -573,6 +580,16 @@ export default function SyncPlayer() {
     }, 3000);
   }
 
+  async function toggleFullscreen() {
+    const container = playerWrapRef.current;
+    if (!container) return;
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else {
+      await container.requestFullscreen();
+    }
+  }
+
   return (
     <main className="layout-shell">
       <header className="flex flex-wrap items-center justify-between gap-4">
@@ -644,7 +661,7 @@ export default function SyncPlayer() {
       <section className="grid gap-6 xl:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]">
         <Card>
           <CardContent className="space-y-4 p-4">
-            <div className="relative">
+            <div ref={playerWrapRef} className="relative">
               <video
                 ref={playerRef}
                 controls
@@ -666,7 +683,12 @@ export default function SyncPlayer() {
             </div>
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>Peers: {peers}</span>
-              <span>Sync: {syncState}</span>
+              <div className="flex items-center gap-2">
+                <span>Sync: {syncState}</span>
+                <Button variant="outline" size="sm" type="button" onClick={toggleFullscreen}>
+                  {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
