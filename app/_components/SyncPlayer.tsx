@@ -43,6 +43,13 @@ type ChatMessage = {
   reactionUsers?: Record<string, string[]>;
 };
 
+type FloatingReaction = {
+  id: string;
+  emoji: string;
+  left: number;
+  size: number;
+};
+
 export default function SyncPlayer() {
   const playerRef = useRef<HTMLVideoElement | null>(null);
   const localCallRef = useRef<HTMLVideoElement | null>(null);
@@ -68,6 +75,7 @@ export default function SyncPlayer() {
   const [status, setStatus] = useState("Connecting");
   const [hlsNote, setHlsNote] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [floatingReactions, setFloatingReactions] = useState<FloatingReaction[]>([]);
 
   const selectedEntry = useMemo(
     () => videos.find((video) => video.name === selectedVideo) ?? null,
@@ -554,6 +562,17 @@ export default function SyncPlayer() {
     });
   }
 
+  function spawnReaction(emoji: string) {
+    const id = `${emoji}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const left = Math.floor(10 + Math.random() * 80);
+    const size = Math.floor(22 + Math.random() * 24);
+    const reaction: FloatingReaction = { id, emoji, left, size };
+    setFloatingReactions((prev) => [...prev, reaction]);
+    window.setTimeout(() => {
+      setFloatingReactions((prev) => prev.filter((item) => item.id !== id));
+    }, 3000);
+  }
+
   return (
     <main className="layout-shell">
       <header className="flex flex-wrap items-center justify-between gap-4">
@@ -625,7 +644,26 @@ export default function SyncPlayer() {
       <section className="grid gap-6 xl:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]">
         <Card>
           <CardContent className="space-y-4 p-4">
-            <video ref={playerRef} controls preload="metadata" crossOrigin="anonymous" className="w-full rounded-lg bg-black" />
+            <div className="relative">
+              <video
+                ref={playerRef}
+                controls
+                preload="metadata"
+                crossOrigin="anonymous"
+                className="w-full rounded-lg bg-black"
+              />
+              <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                {floatingReactions.map((reaction) => (
+                  <span
+                    key={reaction.id}
+                    className="float-reaction absolute"
+                    style={{ left: `${reaction.left}%`, bottom: "12px", fontSize: `${reaction.size}px` }}
+                  >
+                    {reaction.emoji}
+                  </span>
+                ))}
+              </div>
+            </div>
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>Peers: {peers}</span>
               <span>Sync: {syncState}</span>
@@ -697,6 +735,20 @@ export default function SyncPlayer() {
                   </div>
                 ))
               )}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {["❤️", "🥰", "😭", "🤯", "😡"].map((emoji) => (
+                <Button
+                  key={emoji}
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={() => spawnReaction(emoji)}
+                >
+                  {emoji}
+                </Button>
+              ))}
             </div>
 
             <form

@@ -61,4 +61,22 @@
   .layout-shell {
     @apply mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-5 pb-10 pt-7;
   }
+
+  .float-reaction {
+    animation: float-up 3s ease-out forwards;
+  }
+}
+
+@keyframes float-up {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-180px) scale(1.1);
+    opacity: 0;
+  }
 }
