@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
-const SYNC_THRESHOLD = 0.35;
+const SYNC_THRESHOLD = 3.5;
 const HEARTBEAT_MS = 3000;
 const VERSION_POLL_MS = 5000;
 const STATE_CACHE_KEY = "pairwatch:lastState";
