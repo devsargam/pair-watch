@@ -92,10 +92,6 @@ while true; do
     echo "Server process stopped."
     break
   fi
-  if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
-    echo "Frontend process stopped."
-    break
-  fi
   if ! kill -0 "$SERVER_TUNNEL_PID" 2>/dev/null; then
     echo "Server tunnel stopped."
     break
@@ -104,4 +100,9 @@ while true; do
     echo "Frontend tunnel stopped."
     break
   fi
-done
+  if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
+    echo "Frontend process stopped. Restarting..."
+    pnpm dev:frontend >"$FRONTEND_LOG" 2>&1 &
+    FRONTEND_PID=$!
+  fi
+  done
