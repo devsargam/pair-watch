@@ -1,17 +1,15 @@
 const socket = io();
 
-const roomInput = document.getElementById("room");
 const videoSelect = document.getElementById("video-select");
 const playAllToggle = document.getElementById("play-all");
-const joinButton = document.getElementById("join");
 const resyncButton = document.getElementById("resync");
 const player = document.getElementById("player");
 const statusEl = document.getElementById("status");
 const statusDot = document.getElementById("status-dot");
 const peersEl = document.getElementById("peers");
 const syncStateEl = document.getElementById("sync-state");
+const hlsNote = document.getElementById("hls-note");
 
-let currentRoom = "";
 let isApplyingRemote = false;
 let pendingRemoteState = null;
 let lastLocalUpdate = 0;
@@ -25,23 +23,13 @@ const HEARTBEAT_MS = 3000;
 init();
 
 async function init() {
-  roomInput.value = randomRoom();
   await loadVideos();
-  setStatus("Disconnected", false);
-
-  joinButton.addEventListener("click", () => {
-    const room = roomInput.value.trim();
-    if (!room) return;
-    currentRoom = room;
-    socket.emit("join", { room });
-    setStatus(`Connected to ${room}`, true);
-    syncStateEl.textContent = "Waiting";
-    pushState("join");
-  });
+  setStatus("Connected", true);
+  syncStateEl.textContent = "Waiting";
+  pushState("join");
 
   resyncButton.addEventListener("click", () => {
-    if (!currentRoom) return;
-    socket.emit("request-state", { room: currentRoom, requester: socket.id });
+    socket.emit("request-state", { requester: socket.id });
     syncStateEl.textContent = "Requesting state";
   });
 
@@ -81,7 +69,6 @@ async function init() {
   });
 
   socket.on("request-state", ({ requester }) => {
-    if (!currentRoom) return;
     socket.emit("reply-state", { to: requester, state: collectState() });
   });
 
@@ -92,7 +79,7 @@ async function init() {
   });
 
   setInterval(() => {
-    if (!currentRoom || player.paused) return;
+    if (player.paused) return;
     pushState("heartbeat");
   }, HEARTBEAT_MS);
 }
@@ -133,25 +120,32 @@ function setVideo(filename) {
     hlsPlayer = null;
   }
 
-  if (hlsPath && window.Hls && window.Hls.isSupported()) {
+  if (!hlsPath) {
+    player.removeAttribute("src");
+    player.load();
+    hlsNote.textContent = "HLS not found for this file. Run `npm run hls` and reload.";
+    return;
+  }
+
+  hlsNote.textContent = "";
+
+  if (window.Hls && window.Hls.isSupported()) {
     hlsPlayer = new window.Hls();
     hlsPlayer.loadSource(hlsPath);
     hlsPlayer.attachMedia(player);
-  } else if (hlsPath && player.canPlayType("application/vnd.apple.mpegurl")) {
+  } else if (player.canPlayType("application/vnd.apple.mpegurl")) {
     player.src = hlsPath;
-  } else {
-    player.src = `/videos/${encodeURIComponent(filename)}`;
   }
 
   player.load();
 }
 
 function pushState(reason) {
-  if (!currentRoom || isApplyingRemote) return;
+  if (isApplyingRemote) return;
   lastLocalUpdate = Date.now();
   const state = collectState();
   state.reason = reason;
-  socket.emit("state", { room: currentRoom, state });
+  socket.emit("state", { state });
 }
 
 function collectState() {
@@ -205,10 +199,6 @@ function applyRemoteState(state) {
 function setStatus(text, isConnected) {
   statusEl.textContent = text;
   statusDot.classList.toggle("online", isConnected);
-}
-
-function randomRoom() {
-  return Math.random().toString(36).slice(2, 8);
 }
 
 function getNextVideo() {

@@ -25,6 +25,7 @@ app.get("/api/videos", async (_req, res) => {
     const files = entries
       .filter((entry) => entry.isFile())
       .map((entry) => entry.name)
+      .filter(isVideoFile)
       .sort();
     const payload = await Promise.all(
       files.map(async (name) => {
@@ -96,25 +97,17 @@ app.get("/videos/:name", async (req, res) => {
 });
 
 io.on("connection", (socket) => {
-  socket.on("join", ({ room }) => {
-    if (!room) return;
-    socket.join(room);
+  io.emit("room-info", { count: io.engine.clientsCount });
+  socket.broadcast.emit("request-state", { requester: socket.id });
 
-    const clients = io.sockets.adapter.rooms.get(room);
-    const count = clients ? clients.size : 0;
-
-    io.to(room).emit("room-info", { count });
-    socket.to(room).emit("request-state", { requester: socket.id });
+  socket.on("state", ({ state }) => {
+    if (!state) return;
+    socket.broadcast.emit("state", { state, at: Date.now() });
   });
 
-  socket.on("state", ({ room, state }) => {
-    if (!room || !state) return;
-    socket.to(room).emit("state", { state, at: Date.now() });
-  });
-
-  socket.on("request-state", ({ room, requester }) => {
-    if (!room || !requester) return;
-    socket.to(room).emit("request-state", { requester });
+  socket.on("request-state", ({ requester }) => {
+    if (!requester) return;
+    socket.broadcast.emit("request-state", { requester });
   });
 
   socket.on("reply-state", ({ to, state }) => {
@@ -122,13 +115,8 @@ io.on("connection", (socket) => {
     io.to(to).emit("state", { state, at: Date.now() });
   });
 
-  socket.on("disconnecting", () => {
-    for (const room of socket.rooms) {
-      if (room === socket.id) continue;
-      const clients = io.sockets.adapter.rooms.get(room);
-      const count = clients ? clients.size - 1 : 0;
-      io.to(room).emit("room-info", { count });
-    }
+  socket.on("disconnect", () => {
+    io.emit("room-info", { count: io.engine.clientsCount });
   });
 });
 
@@ -143,6 +131,11 @@ function getContentType(filePath) {
   if (ext === ".webm") return "video/webm";
   if (ext === ".mkv") return "video/x-matroska";
   return "application/octet-stream";
+}
+
+function isVideoFile(name) {
+  const ext = path.extname(name).toLowerCase();
+  return [".mp4", ".mov", ".webm", ".mkv", ".m4v"].includes(ext);
 }
 
 function encodeHlsId(name) {

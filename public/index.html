@@ -22,10 +22,6 @@
 
       <section class="controls">
         <label class="field">
-          <span>Room</span>
-          <input id="room" type="text" placeholder="room-id" />
-        </label>
-        <label class="field">
           <span>Video</span>
           <select id="video-select"></select>
         </label>
@@ -33,7 +29,6 @@
           <input id="play-all" type="checkbox" />
           <span>Play all</span>
         </label>
-        <button id="join" class="primary">Join room</button>
         <button id="resync" class="ghost">Resync</button>
       </section>
 
@@ -50,6 +45,7 @@
           Tips: Press play or seek; the other viewer will follow. Turn on <strong>Play all</strong> to
           auto-advance through the whole folder.
         </p>
+        <p id="hls-note"></p>
       </section>
     </main>
 
