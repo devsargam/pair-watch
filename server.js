@@ -173,6 +173,11 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("call-end");
   });
 
+  socket.on("player-reaction", (payload) => {
+    if (!payload || !payload.emoji) return;
+    socket.broadcast.emit("player-reaction", payload);
+  });
+
   socket.on("disconnect", () => {
     io.emit("room-info", { count: io.engine.clientsCount });
   });

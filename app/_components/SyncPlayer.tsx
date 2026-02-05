@@ -190,6 +190,11 @@ export default function SyncPlayer() {
       endCall();
     });
 
+    socket.on("player-reaction", ({ emoji }: { emoji: string }) => {
+      if (!emoji) return;
+      spawnReaction(emoji);
+    });
+
     const heartbeat = window.setInterval(() => {
       const video = playerRef.current;
       if (!video || video.paused) return;
@@ -580,6 +585,11 @@ export default function SyncPlayer() {
     }, 3000);
   }
 
+  function emitPlayerReaction(emoji: string) {
+    spawnReaction(emoji);
+    socketRef.current?.emit("player-reaction", { emoji });
+  }
+
   async function toggleFullscreen() {
     const container = playerWrapRef.current;
     if (!container) return;
@@ -766,7 +776,7 @@ export default function SyncPlayer() {
                   variant="outline"
                   size="sm"
                   type="button"
-                  onClick={() => spawnReaction(emoji)}
+                  onClick={() => emitPlayerReaction(emoji)}
                 >
                   {emoji}
                 </Button>
