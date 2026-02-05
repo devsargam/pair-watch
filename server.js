@@ -10,9 +10,15 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
+
+const corsOriginEnv = process.env.CORS_ORIGIN;
+const corsOrigins = corsOriginEnv
+  ? corsOriginEnv.split(",").map((origin) => origin.trim()).filter(Boolean)
+  : "*";
+
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:3001"],
+    origin: corsOrigins,
     methods: ["GET", "POST"],
   },
 });
@@ -23,7 +29,12 @@ const HLS_DIR = path.join(__dirname, "hls");
 const SERVER_VERSION = Date.now().toString();
 
 app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3001");
+  const origin = req.headers.origin;
+  if (corsOrigins === "*") {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  } else if (origin && corsOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") {
