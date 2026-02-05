@@ -80,9 +80,9 @@ if [[ -z "$SERVER_URL" || -z "$FRONTEND_URL" ]]; then
   exit 1
 fi
 
-cat <<EOT
+cat <<EOT > "$ROOT_DIR/.env.local"
 NEXT_PUBLIC_SERVER_URL=$SERVER_URL
-EOT > "$ROOT_DIR/.env.local"
+EOT
 
 if [[ -n "${FRONTEND_PID:-}" ]] && kill -0 "$FRONTEND_PID" 2>/dev/null; then
   kill "$FRONTEND_PID" || true
