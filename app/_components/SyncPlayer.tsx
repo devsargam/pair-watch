@@ -112,7 +112,10 @@ export default function SyncPlayer() {
 
     socket.on("chat", (message: ChatMessage) => {
       if (!message) return;
-      setMessages((prev) => [...prev, message]);
+      const safeMessage = message.id
+        ? message
+        : { ...message, id: `${message.sender}-${message.at}` };
+      setMessages((prev) => [...prev, safeMessage]);
     });
 
     socket.on("chat-reaction", ({ id, emoji }: { id: string; emoji: string }) => {
@@ -425,6 +428,7 @@ export default function SyncPlayer() {
   }
 
   function addReaction(id: string, emoji: string) {
+    if (!id) return;
     setMessages((prev) =>
       prev.map((msg) => {
         if (msg.id !== id) return msg;
@@ -635,7 +639,7 @@ export default function SyncPlayer() {
               ) : (
                 messages.map((message, index) => (
                   <div
-                    key={`${message.at}-${index}`}
+                    key={message.id || `${message.at}-${index}`}
                     className={`space-y-1 text-xs ${message.sender === socketRef.current?.id ? "text-right" : "text-left"}`}
                     onDoubleClick={() => addReaction(message.id, "❤️")}
                   >
