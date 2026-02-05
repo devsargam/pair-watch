@@ -150,7 +150,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("chat-reaction", (payload) => {
-    if (!payload || !payload.id || !payload.emoji) return;
+    if (!payload || !payload.id || !payload.emoji || !payload.sender || !payload.action) return;
     socket.broadcast.emit("chat-reaction", payload);
   });
 

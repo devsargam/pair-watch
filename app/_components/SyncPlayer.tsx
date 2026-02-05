@@ -40,6 +40,7 @@ type ChatMessage = {
   sender: string;
   at: number;
   reactions?: Record<string, number>;
+  reactionUsers?: Record<string, string[]>;
 };
 
 export default function SyncPlayer() {
@@ -118,17 +119,28 @@ export default function SyncPlayer() {
       setMessages((prev) => [...prev, safeMessage]);
     });
 
-    socket.on("chat-reaction", ({ id, emoji }: { id: string; emoji: string }) => {
-      if (!id || !emoji) return;
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (msg.id !== id) return msg;
-          const reactions = { ...(msg.reactions ?? {}) };
-          reactions[emoji] = (reactions[emoji] ?? 0) + 1;
-          return { ...msg, reactions };
-        })
-      );
-    });
+    socket.on(
+      "chat-reaction",
+      ({ id, emoji, sender, action }: { id: string; emoji: string; sender: string; action: "add" | "remove" }) => {
+        if (!id || !emoji || !sender || !action) return;
+        setMessages((prev) =>
+          prev.map((msg) => {
+            if (msg.id !== id) return msg;
+            const reactionUsers = { ...(msg.reactionUsers ?? {}) };
+            const currentUsers = new Set(reactionUsers[emoji] ?? []);
+            if (action === "add") {
+              currentUsers.add(sender);
+            } else {
+              currentUsers.delete(sender);
+            }
+            reactionUsers[emoji] = Array.from(currentUsers);
+            const reactions = { ...(msg.reactions ?? {}) };
+            reactions[emoji] = currentUsers.size;
+            return { ...msg, reactions, reactionUsers };
+          })
+        );
+      }
+    );
 
     socket.on("call-offer", async ({ offer }) => {
       if (!offer) return;
@@ -429,15 +441,26 @@ export default function SyncPlayer() {
 
   function addReaction(id: string, emoji: string) {
     if (!id) return;
+    const sender = socketRef.current?.id ?? "local";
     setMessages((prev) =>
       prev.map((msg) => {
         if (msg.id !== id) return msg;
+        const reactionUsers = { ...(msg.reactionUsers ?? {}) };
+        const currentUsers = new Set(reactionUsers[emoji] ?? []);
+        const hasReacted = currentUsers.has(sender);
+        if (hasReacted) {
+          currentUsers.delete(sender);
+        } else {
+          currentUsers.add(sender);
+        }
+        reactionUsers[emoji] = Array.from(currentUsers);
         const reactions = { ...(msg.reactions ?? {}) };
-        reactions[emoji] = (reactions[emoji] ?? 0) + 1;
-        return { ...msg, reactions };
+        reactions[emoji] = currentUsers.size;
+        const action = hasReacted ? "remove" : "add";
+        socketRef.current?.emit("chat-reaction", { id, emoji, sender, action });
+        return { ...msg, reactions, reactionUsers };
       })
     );
-    socketRef.current?.emit("chat-reaction", { id, emoji });
   }
 
   async function startCall() {
@@ -658,7 +681,9 @@ export default function SyncPlayer() {
                     </div>
                     {message.reactions && Object.keys(message.reactions).length > 0 ? (
                       <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-                        {Object.entries(message.reactions).map(([emoji, count]) => (
+                        {Object.entries(message.reactions)
+                          .filter(([, count]) => count > 0)
+                          .map(([emoji, count]) => (
                           <span
                             key={`${message.id}-${emoji}`}
                             className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5"
