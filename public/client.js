@@ -228,6 +228,18 @@ function setVideo(filename) {
 
   if (window.Hls && window.Hls.isSupported()) {
     hlsPlayer = new window.Hls();
+    hlsPlayer.on(window.Hls.Events.MANIFEST_PARSED, () => {
+      if (hlsPlayer.subtitleTracks && hlsPlayer.subtitleTracks.length > 0) {
+        hlsPlayer.subtitleTrack = 0;
+        hlsPlayer.subtitleDisplay = true;
+      }
+    });
+    hlsPlayer.on(window.Hls.Events.SUBTITLE_TRACKS_UPDATED, (_event, data) => {
+      if (data.subtitleTracks && data.subtitleTracks.length > 0) {
+        hlsPlayer.subtitleTrack = 0;
+        hlsPlayer.subtitleDisplay = true;
+      }
+    });
     hlsPlayer.loadSource(hlsPath);
     hlsPlayer.attachMedia(player);
   } else if (player.canPlayType("application/vnd.apple.mpegurl")) {
