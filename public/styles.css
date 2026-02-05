@@ -19,13 +19,13 @@ body {
   margin: 0;
   font-family: "IBM Plex Sans", sans-serif;
   color: var(--text);
-  background: linear-gradient(180deg, #f7f7f3 0%, #efefea 100%);
+  background: #f5f5f2;
   min-height: 100vh;
 }
 
 .shell {
   margin: 0 auto;
-  padding: 40px 24px 48px;
+  padding: 28px 20px 40px;
   display: grid;
   gap: 28px;
 }
@@ -34,39 +34,29 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 h1 {
-  font-size: 2.2rem;
-  margin: 4px 0 8px;
+  font-size: 1.8rem;
+  margin: 4px 0 4px;
   font-weight: 600;
-}
-
-.eyebrow {
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-size: 0.65rem;
-  color: var(--accent-2);
-  margin: 0;
 }
 
 .subtitle {
   color: var(--muted);
   margin: 0;
-  max-width: 480px;
+  max-width: 520px;
+  font-size: 0.9rem;
 }
 
-.status-card {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  padding: 12px 18px;
-  border-radius: 999px;
-  display: flex;
+.status {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  font-size: 0.9rem;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
 .dot {
@@ -83,13 +73,13 @@ h1 {
 
 .controls {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 16px;
   align-items: end;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  padding: 18px;
-  border-radius: 14px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  border-radius: 0;
 }
 
 .field {
@@ -104,7 +94,7 @@ h1 {
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: var(--panel-light);
+  background: var(--panel);
   color: var(--text);
   font-family: inherit;
 }
@@ -193,7 +183,7 @@ video {
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 10px;
-  background: var(--panel-light);
+  background: var(--panel);
 }
 
 .call-label {
@@ -297,7 +287,7 @@ video {
   }
 
   h1 {
-    font-size: 2rem;
+    font-size: 1.6rem;
   }
 
   .main-grid {

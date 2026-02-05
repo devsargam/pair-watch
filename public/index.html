@@ -9,14 +9,14 @@
   <body>
     <main class="shell">
       <header class="header">
-        <div>
-          <p class="eyebrow">Two-person playback sync</p>
+        <div class="title-block">
+          <p class="subtitle">Two-person playback sync</p>
           <h1>Sync Player</h1>
           <p class="subtitle">Stream videos from the <code>videos/</code> folder with a shared timeline.</p>
         </div>
-        <div class="status-card">
-          <span id="status">Not connected</span>
+        <div class="status">
           <span class="dot" id="status-dot"></span>
+          <span id="status">Connected</span>
         </div>
       </header>
 
@@ -63,9 +63,6 @@
       </section>
 
       <section class="notes">
-        <p>
-          Tips: Press play or seek; the other viewer will follow.
-        </p>
         <p id="hls-note"></p>
       </section>
     </main>
