@@ -9,6 +9,9 @@ const statusDot = document.getElementById("status-dot");
 const peersEl = document.getElementById("peers");
 const syncStateEl = document.getElementById("sync-state");
 const hlsNote = document.getElementById("hls-note");
+const chatMessages = document.getElementById("chat-messages");
+const chatForm = document.getElementById("chat-form");
+const chatInput = document.getElementById("chat-input");
 
 let isApplyingRemote = false;
 let pendingRemoteState = null;
@@ -31,6 +34,20 @@ async function init() {
   resyncButton.addEventListener("click", () => {
     socket.emit("request-state", { requester: socket.id });
     syncStateEl.textContent = "Requesting state";
+  });
+
+  chatForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const text = chatInput.value.trim();
+    if (!text) return;
+    const message = {
+      text,
+      sender: socket.id,
+      at: Date.now(),
+    };
+    appendChatMessage(message, true);
+    socket.emit("chat", message);
+    chatInput.value = "";
   });
 
   videoSelect.addEventListener("change", () => {
@@ -76,6 +93,11 @@ async function init() {
     if (!state) return;
     if (Date.now() - lastLocalUpdate < 150) return;
     applyRemoteState(state);
+  });
+
+  socket.on("chat", (message) => {
+    if (!message) return;
+    appendChatMessage(message, false);
   });
 
   setInterval(() => {
@@ -221,4 +243,28 @@ function getNextVideo() {
 function isVideoFile(name) {
   const ext = name.split(".").pop()?.toLowerCase();
   return ["mp4", "mov", "webm", "mkv", "m4v"].includes(ext);
+}
+
+function appendChatMessage(message, isMine) {
+  const wrapper = document.createElement("div");
+  wrapper.className = `chat-message${isMine ? " mine" : ""}`;
+
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  const who = document.createElement("span");
+  who.textContent = isMine ? "You" : "Peer";
+  const time = document.createElement("span");
+  time.textContent = new Date(message.at).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  meta.append(who, time);
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.textContent = message.text;
+
+  wrapper.append(meta, bubble);
+  chatMessages.appendChild(wrapper);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 }

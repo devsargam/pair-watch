@@ -170,6 +170,77 @@ video {
   color: var(--muted);
 }
 
+.chat {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.chat-header {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.chat-messages {
+  background: var(--panel-light);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  height: 220px;
+  overflow-y: auto;
+  display: grid;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.chat-message {
+  display: grid;
+  gap: 2px;
+}
+
+.chat-message .meta {
+  display: flex;
+  gap: 8px;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.chat-message .bubble {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: var(--text);
+  max-width: 80%;
+}
+
+.chat-message.mine {
+  justify-items: end;
+}
+
+.chat-message.mine .bubble {
+  background: #111111;
+  color: #ffffff;
+}
+
+.chat-form {
+  display: flex;
+  gap: 10px;
+}
+
+.chat-form input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel-light);
+  color: var(--text);
+  font-family: inherit;
+}
+
 @media (max-width: 720px) {
   .header {
     flex-direction: column;

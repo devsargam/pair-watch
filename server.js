@@ -115,6 +115,11 @@ io.on("connection", (socket) => {
     io.to(to).emit("state", { state, at: Date.now() });
   });
 
+  socket.on("chat", (message) => {
+    if (!message || !message.text) return;
+    socket.broadcast.emit("chat", message);
+  });
+
   socket.on("disconnect", () => {
     io.emit("room-info", { count: io.engine.clientsCount });
   });
