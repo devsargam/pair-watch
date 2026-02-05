@@ -90,15 +90,21 @@ if [[ -n "${FRONTEND_PID:-}" ]] && kill -0 "$FRONTEND_PID" 2>/dev/null; then
   FRONTEND_PID=$!
 fi
 
+if command -v pbcopy >/dev/null 2>&1; then
+  echo "$FRONTEND_URL" | pbcopy
+fi
+
+if command -v open >/dev/null 2>&1; then
+  open -a "Google Chrome" "$FRONTEND_URL" || open "$FRONTEND_URL"
+fi
+
 cat <<EOT
 Cloudflare tunnels are up:
 - Server:   $SERVER_URL
 - Frontend: $FRONTEND_URL
 
 .env.local has been updated and the frontend restarted.
-
-Open:
-$FRONTEND_URL
+Frontend URL copied to clipboard.
 
 Press Ctrl+C to stop everything.
 EOT
