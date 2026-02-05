@@ -32,21 +32,23 @@
         <button id="resync" class="ghost">Resync</button>
       </section>
 
-      <section class="player-area">
-        <video id="player" controls preload="metadata"></video>
-        <div class="meta">
-          <div>Peers: <span id="peers">0</span></div>
-          <div>Sync: <span id="sync-state">Idle</span></div>
+      <section class="main-grid">
+        <div class="player-area">
+          <video id="player" controls preload="metadata"></video>
+          <div class="meta">
+            <div>Peers: <span id="peers">0</span></div>
+            <div>Sync: <span id="sync-state">Idle</span></div>
+          </div>
         </div>
-      </section>
 
-      <section class="chat">
-        <div class="chat-header">Chat</div>
-        <div id="chat-messages" class="chat-messages"></div>
-        <form id="chat-form" class="chat-form">
-          <input id="chat-input" type="text" placeholder="Say something…" autocomplete="off" />
-          <button type="submit" class="primary">Send</button>
-        </form>
+        <div class="chat">
+          <div class="chat-header">Chat</div>
+          <div id="chat-messages" class="chat-messages"></div>
+          <form id="chat-form" class="chat-form">
+            <input id="chat-input" type="text" placeholder="Say something…" autocomplete="off" />
+            <button type="submit" class="primary">Send</button>
+          </form>
+        </div>
       </section>
 
       <section class="notes">

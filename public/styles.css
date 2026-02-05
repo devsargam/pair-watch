@@ -142,6 +142,13 @@ button {
   accent-color: var(--accent);
 }
 
+.main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
 .player-area {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -249,5 +256,9 @@ video {
 
   h1 {
     font-size: 2rem;
+  }
+
+  .main-grid {
+    grid-template-columns: 1fr;
   }
 }
