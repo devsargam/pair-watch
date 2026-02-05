@@ -78,7 +78,6 @@ export default function SyncPlayer() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [floatingReactions, setFloatingReactions] = useState<FloatingReaction[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [debugEvents, setDebugEvents] = useState<string[]>([]);
 
   const selectedEntry = useMemo(
     () => videos.find((video) => video.name === selectedVideo) ?? null,
@@ -128,7 +127,6 @@ export default function SyncPlayer() {
         ? message
         : { ...message, id: `${message.sender}-${message.at}` };
       setMessages((prev) => [...prev, safeMessage]);
-      logDebug(`chat:${safeMessage.id}`);
     });
 
     socket.on(
@@ -194,7 +192,6 @@ export default function SyncPlayer() {
 
     socket.on("player-reaction", ({ emoji }: { emoji: string }) => {
       if (!emoji) return;
-      logDebug(`player-reaction:${emoji}`);
       spawnReaction(emoji);
     });
 
@@ -577,12 +574,6 @@ export default function SyncPlayer() {
     });
   }
 
-  function logDebug(message: string) {
-    setDebugEvents((prev) => {
-      const next = [`${new Date().toLocaleTimeString()} ${message}`, ...prev];
-      return next.slice(0, 8);
-    });
-  }
 
   function spawnReaction(emoji: string) {
     const id = `${emoji}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -598,10 +589,9 @@ export default function SyncPlayer() {
   function emitPlayerReaction(emoji: string) {
     socketRef.current?.emit("player-reaction", { emoji }, (ack: { ok?: boolean }) => {
       if (ack?.ok) {
-        logDebug(`reaction-ack:${emoji}`);
+        return;
       }
     });
-    logDebug(`emit-reaction:${emoji}`);
   }
 
   async function toggleFullscreen() {
@@ -819,15 +809,6 @@ export default function SyncPlayer() {
 
       {hlsNote ? <p className="text-sm text-muted-foreground">{hlsNote}</p> : null}
 
-      <div className="fixed bottom-4 left-4 z-50 w-64 rounded-lg border border-border bg-background/90 p-3 text-xs text-muted-foreground shadow-lg">
-        <div className="mb-2 font-semibold text-foreground">Debug</div>
-        <div className="space-y-1">
-          {debugEvents.length === 0 ? <div>No events yet.</div> : null}
-          {debugEvents.map((event, index) => (
-            <div key={`${event}-${index}`}>{event}</div>
-          ))}
-        </div>
-      </div>
     </main>
   );
 
