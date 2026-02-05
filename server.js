@@ -31,17 +31,21 @@ app.get("/api/videos", async (_req, res) => {
     const files = entries
       .filter((entry) => entry.isFile())
       .map((entry) => entry.name)
-      .filter(isVideoFile)
       .sort();
+    const videos = files.filter(isVideoFile);
+    const subtitles = files.filter(isSubtitleFile);
+    const subtitleMap = buildSubtitleMap(subtitles);
     const payload = await Promise.all(
-      files.map(async (name) => {
+      videos.map(async (name) => {
         const hlsId = encodeHlsId(name);
         const playlistPath = path.join(HLS_DIR, hlsId, "index.m3u8");
         const hlsReady = await fileExists(playlistPath);
+        const normalized = normalizeName(name);
         return {
           name,
           hls: hlsReady,
           hlsPath: hlsReady ? `/hls/${hlsId}/index.m3u8` : null,
+          subtitles: subtitleMap.get(normalized) ?? [],
         };
       })
     );
@@ -148,6 +152,30 @@ function getContentType(filePath) {
 function isVideoFile(name) {
   const ext = path.extname(name).toLowerCase();
   return [".mp4", ".mov", ".webm", ".mkv", ".m4v"].includes(ext);
+}
+
+function isSubtitleFile(name) {
+  const ext = path.extname(name).toLowerCase();
+  return [".vtt", ".srt"].includes(ext);
+}
+
+function normalizeName(name) {
+  const base = path.basename(name, path.extname(name));
+  return base
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function buildSubtitleMap(subtitles) {
+  const map = new Map();
+  for (const file of subtitles) {
+    const key = normalizeName(file);
+    const list = map.get(key) ?? [];
+    list.push(file);
+    map.set(key, list);
+  }
+  return map;
 }
 
 function encodeHlsId(name) {
