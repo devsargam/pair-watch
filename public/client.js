@@ -308,7 +308,7 @@ function addSubtitleTracks(subtitles) {
     track.kind = "subtitles";
     track.label = subtitleLabel(file, index);
     track.srclang = "en";
-    track.src = `/videos/${encodeURIComponent(file)}`;
+    track.src = `/api/subtitles/${encodeURIComponent(file)}`;
     track.default = index === 0;
     player.appendChild(track);
   });
