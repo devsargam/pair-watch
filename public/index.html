@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sync Player</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="header">
+        <div>
+          <p class="eyebrow">Two-person playback sync</p>
+          <h1>Sync Player</h1>
+          <p class="subtitle">Stream videos from the <code>videos/</code> folder with a shared timeline.</p>
+        </div>
+        <div class="status-card">
+          <span id="status">Not connected</span>
+          <span class="dot" id="status-dot"></span>
+        </div>
+      </header>
+
+      <section class="controls">
+        <label class="field">
+          <span>Room</span>
+          <input id="room" type="text" placeholder="room-id" />
+        </label>
+        <label class="field">
+          <span>Video</span>
+          <select id="video-select"></select>
+        </label>
+        <label class="toggle">
+          <input id="play-all" type="checkbox" />
+          <span>Play all</span>
+        </label>
+        <button id="join" class="primary">Join room</button>
+        <button id="resync" class="ghost">Resync</button>
+      </section>
+
+      <section class="player-area">
+        <video id="player" controls preload="metadata"></video>
+        <div class="meta">
+          <div>Peers: <span id="peers">0</span></div>
+          <div>Sync: <span id="sync-state">Idle</span></div>
+        </div>
+      </section>
+
+      <section class="notes">
+        <p>
+          Tips: Press play or seek; the other viewer will follow. Turn on <strong>Play all</strong> to
+          auto-advance through the whole folder.
+        </p>
+      </section>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js" type="module"></script>
+  </body>
+</html>
