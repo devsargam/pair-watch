@@ -35,9 +35,11 @@ type PlaybackState = {
 };
 
 type ChatMessage = {
+  id: string;
   text: string;
   sender: string;
   at: number;
+  reactions?: Record<string, number>;
 };
 
 export default function SyncPlayer() {
@@ -111,6 +113,18 @@ export default function SyncPlayer() {
     socket.on("chat", (message: ChatMessage) => {
       if (!message) return;
       setMessages((prev) => [...prev, message]);
+    });
+
+    socket.on("chat-reaction", ({ id, emoji }: { id: string; emoji: string }) => {
+      if (!id || !emoji) return;
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id !== id) return msg;
+          const reactions = { ...(msg.reactions ?? {}) };
+          reactions[emoji] = (reactions[emoji] ?? 0) + 1;
+          return { ...msg, reactions };
+        })
+      );
     });
 
     socket.on("call-offer", async ({ offer }) => {
@@ -405,9 +419,21 @@ export default function SyncPlayer() {
   }
 
   function appendChatMessage(text: string, sender: string) {
-    const message = { text, sender, at: Date.now() };
+    const message = { id: `${sender}-${Date.now()}`, text, sender, at: Date.now() };
     setMessages((prev) => [...prev, message]);
     socketRef.current?.emit("chat", message);
+  }
+
+  function addReaction(id: string, emoji: string) {
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.id !== id) return msg;
+        const reactions = { ...(msg.reactions ?? {}) };
+        reactions[emoji] = (reactions[emoji] ?? 0) + 1;
+        return { ...msg, reactions };
+      })
+    );
+    socketRef.current?.emit("chat-reaction", { id, emoji });
   }
 
   async function startCall() {
@@ -611,6 +637,7 @@ export default function SyncPlayer() {
                   <div
                     key={`${message.at}-${index}`}
                     className={`space-y-1 text-xs ${message.sender === socketRef.current?.id ? "text-right" : "text-left"}`}
+                    onDoubleClick={() => addReaction(message.id, "❤️")}
                   >
                     <div className="text-[10px] text-muted-foreground">
                       {message.sender === socketRef.current?.id ? "You" : "Peer"} ·{" "}
@@ -625,6 +652,19 @@ export default function SyncPlayer() {
                     >
                       {message.text}
                     </div>
+                    {message.reactions && Object.keys(message.reactions).length > 0 ? (
+                      <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                        {Object.entries(message.reactions).map(([emoji, count]) => (
+                          <span
+                            key={`${message.id}-${emoji}`}
+                            className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5"
+                          >
+                            <span className="text-sm">{emoji}</span>
+                            <span>{count}</span>
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 ))
               )}

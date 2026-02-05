@@ -149,6 +149,11 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("chat", message);
   });
 
+  socket.on("chat-reaction", (payload) => {
+    if (!payload || !payload.id || !payload.emoji) return;
+    socket.broadcast.emit("chat-reaction", payload);
+  });
+
   socket.on("call-offer", ({ offer }) => {
     if (!offer) return;
     socket.broadcast.emit("call-offer", { offer });
