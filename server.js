@@ -223,7 +223,7 @@ async function buildSubtitleMap() {
     const key = normalizeName(file);
     const list = map.get(key) ?? [];
     if (!list.includes(file)) list.push(file);
-    map.set(key, list);
+    map.set(key, sortSubtitles(list));
   }
   return map;
 }
@@ -255,4 +255,18 @@ function convertSrtToVtt(srt) {
   const lines = content.split("\n");
   const converted = lines.map((line) => line.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2"));
   return `WEBVTT\n\n${converted.join("\n")}\n`;
+}
+
+function sortSubtitles(list) {
+  const priorities = ["hdtv", "lol", "webdl", "webrip", "bluray", "bdrip", "dvdrip"];
+  return list.slice().sort((a, b) => scoreSubtitle(b, priorities) - scoreSubtitle(a, priorities));
+}
+
+function scoreSubtitle(name, priorities) {
+  const lowered = name.toLowerCase();
+  let score = 0;
+  priorities.forEach((token, index) => {
+    if (lowered.includes(token)) score += 10 - index;
+  });
+  return score;
 }
