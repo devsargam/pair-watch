@@ -10,6 +10,15 @@ FRONTEND_LOG="$(mktemp)"
 SERVER_TUNNEL_LOG="$(mktemp)"
 FRONTEND_TUNNEL_LOG="$(mktemp)"
 
+port_in_use() {
+  local port="$1"
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -iTCP:"$port" -sTCP:LISTEN -t >/dev/null 2>&1
+    return $?
+  fi
+  return 1
+}
+
 cleanup() {
   if [[ -n "${SERVER_PID:-}" ]] && kill -0 "$SERVER_PID" 2>/dev/null; then
     kill "$SERVER_PID" || true
@@ -28,11 +37,19 @@ trap cleanup EXIT
 
 cd "$ROOT_DIR"
 
-pnpm dev:server >"$SERVER_LOG" 2>&1 &
-SERVER_PID=$!
+if port_in_use "$SERVER_PORT"; then
+  echo "Port $SERVER_PORT already in use. Using existing server." >&2
+else
+  pnpm dev:server >"$SERVER_LOG" 2>&1 &
+  SERVER_PID=$!
+fi
 
-pnpm dev:frontend >"$FRONTEND_LOG" 2>&1 &
-FRONTEND_PID=$!
+if port_in_use "$FRONTEND_PORT"; then
+  echo "Port $FRONTEND_PORT already in use. Using existing frontend." >&2
+else
+  pnpm dev:frontend >"$FRONTEND_LOG" 2>&1 &
+  FRONTEND_PID=$!
+fi
 
 cloudflared tunnel --url "http://localhost:${SERVER_PORT}" --logfile "$SERVER_TUNNEL_LOG" --loglevel info &
 SERVER_TUNNEL_PID=$!
@@ -88,7 +105,7 @@ EOT
 
 while true; do
   sleep 1
-  if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+  if [[ -n "${SERVER_PID:-}" ]] && ! kill -0 "$SERVER_PID" 2>/dev/null; then
     echo "Server process stopped."
     break
   fi
@@ -100,9 +117,9 @@ while true; do
     echo "Frontend tunnel stopped."
     break
   fi
-  if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
+  if [[ -n "${FRONTEND_PID:-}" ]] && ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
     echo "Frontend process stopped. Restarting..."
     pnpm dev:frontend >"$FRONTEND_LOG" 2>&1 &
     FRONTEND_PID=$!
   fi
-  done
+done
