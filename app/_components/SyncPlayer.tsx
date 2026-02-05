@@ -50,6 +50,7 @@ export default function SyncPlayer() {
   const pendingRemoteRef = useRef<PlaybackState | null>(null);
   const lastLocalUpdateRef = useRef(0);
   const playlistRef = useRef<string[]>([]);
+  const requestedVideoRef = useRef<string>("");
   const serverVersionRef = useRef<string | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -259,7 +260,8 @@ export default function SyncPlayer() {
       }
       setVideos(resolved);
       playlistRef.current = resolved.map((entry) => entry.name);
-      setSelectedVideo((prev) => prev || resolved[0].name);
+      const initialVideo = requestedVideoRef.current || resolved[0].name;
+      setSelectedVideo(initialVideo);
       restoreCachedState(resolved);
     } catch {
       setHlsNote("Failed to load video list.");
@@ -293,6 +295,7 @@ export default function SyncPlayer() {
     setSyncState(state.reason ? `Syncing (${state.reason})` : "Syncing");
 
     if (state.video && state.video !== selectedVideo) {
+      requestedVideoRef.current = state.video;
       setSelectedVideo(state.video);
       pendingRemoteRef.current = state;
       isApplyingRemoteRef.current = false;
@@ -506,7 +509,8 @@ export default function SyncPlayer() {
             <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Video</span>
             <Select
               value={selectedVideo}
-              onValueChange={(value) => {
+            onValueChange={(value) => {
+                requestedVideoRef.current = value;
                 setSelectedVideo(value);
                 pushState("video-change");
               }}
