@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import Hls from "hls.js";
 
+import ThemeToggle from "@/app/_components/ThemeToggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -457,10 +458,13 @@ export default function SyncPlayer() {
           <h1 className="text-2xl font-semibold">Sync Player</h1>
           <p className="text-sm text-muted-foreground">Stream videos from the videos/ folder with a shared timeline.</p>
         </div>
-        <Badge variant="outline" className="flex items-center gap-2">
-          <span className={`h-2 w-2 rounded-full ${status === "Connected" ? "bg-foreground" : "bg-muted"}`} />
-          {status}
-        </Badge>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <Badge variant="outline" className="flex items-center gap-2">
+            <span className={`h-2 w-2 rounded-full ${status === "Connected" ? "bg-foreground" : "bg-muted"}`} />
+            {status}
+          </Badge>
+        </div>
       </header>
 
       <section className="grid gap-4 md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.6fr)_auto]">
