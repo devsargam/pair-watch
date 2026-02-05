@@ -661,7 +661,7 @@ export default function SyncPlayer() {
       <section className="grid gap-6 xl:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]">
         <Card>
           <CardContent className="space-y-4 p-4">
-            <div ref={playerWrapRef} className="relative">
+            <div ref={playerWrapRef} className="player-wrap relative">
               <video
                 ref={playerRef}
                 controls
@@ -669,7 +669,7 @@ export default function SyncPlayer() {
                 crossOrigin="anonymous"
                 className="w-full rounded-lg bg-black"
               />
-              <div className="pointer-events-none absolute inset-0 overflow-hidden">
+              <div className="reaction-layer pointer-events-none absolute inset-0 overflow-hidden">
                 {floatingReactions.map((reaction) => (
                   <span
                     key={reaction.id}
