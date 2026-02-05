@@ -14,8 +14,10 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 const VIDEOS_DIR = path.join(__dirname, "videos");
+const HLS_DIR = path.join(__dirname, "hls");
 
 app.use("/", express.static(path.join(__dirname, "public")));
+app.use("/hls", express.static(HLS_DIR));
 
 app.get("/api/videos", async (_req, res) => {
   try {
@@ -24,7 +26,19 @@ app.get("/api/videos", async (_req, res) => {
       .filter((entry) => entry.isFile())
       .map((entry) => entry.name)
       .sort();
-    res.json({ files });
+    const payload = await Promise.all(
+      files.map(async (name) => {
+        const hlsId = encodeHlsId(name);
+        const playlistPath = path.join(HLS_DIR, hlsId, "index.m3u8");
+        const hlsReady = await fileExists(playlistPath);
+        return {
+          name,
+          hls: hlsReady,
+          hlsPath: hlsReady ? `/hls/${hlsId}/index.m3u8` : null,
+        };
+      })
+    );
+    res.json({ files: payload });
   } catch (err) {
     res.status(500).json({ error: "Failed to read videos directory." });
   }
@@ -129,4 +143,17 @@ function getContentType(filePath) {
   if (ext === ".webm") return "video/webm";
   if (ext === ".mkv") return "video/x-matroska";
   return "application/octet-stream";
+}
+
+function encodeHlsId(name) {
+  return Buffer.from(name).toString("base64url");
+}
+
+async function fileExists(filePath) {
+  try {
+    await fs.promises.access(filePath, fs.constants.F_OK);
+    return true;
+  } catch (_err) {
+    return false;
+  }
 }

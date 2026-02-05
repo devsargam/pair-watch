@@ -16,6 +16,8 @@ let isApplyingRemote = false;
 let pendingRemoteState = null;
 let lastLocalUpdate = 0;
 let playlist = [];
+let videoCatalog = [];
+let hlsPlayer = null;
 
 const SYNC_THRESHOLD = 0.35; // seconds
 const HEARTBEAT_MS = 3000;
@@ -108,21 +110,39 @@ async function loadVideos() {
     return;
   }
 
-  playlist = files.slice();
+  videoCatalog = files.slice();
+  playlist = videoCatalog.map((entry) => entry.name);
 
-  files.forEach((file) => {
+  videoCatalog.forEach((entry) => {
     const option = document.createElement("option");
-    option.value = file;
-    option.textContent = file;
+    option.value = entry.name;
+    option.textContent = entry.name;
     videoSelect.appendChild(option);
   });
 
-  setVideo(files[0]);
+  setVideo(videoCatalog[0].name);
 }
 
 function setVideo(filename) {
   if (!filename) return;
-  player.src = `/videos/${encodeURIComponent(filename)}`;
+  const entry = videoCatalog.find((item) => item.name === filename);
+  const hlsPath = entry && entry.hls ? entry.hlsPath : null;
+
+  if (hlsPlayer) {
+    hlsPlayer.destroy();
+    hlsPlayer = null;
+  }
+
+  if (hlsPath && window.Hls && window.Hls.isSupported()) {
+    hlsPlayer = new window.Hls();
+    hlsPlayer.loadSource(hlsPath);
+    hlsPlayer.attachMedia(player);
+  } else if (hlsPath && player.canPlayType("application/vnd.apple.mpegurl")) {
+    player.src = hlsPath;
+  } else {
+    player.src = `/videos/${encodeURIComponent(filename)}`;
+  }
+
   player.load();
 }
 
