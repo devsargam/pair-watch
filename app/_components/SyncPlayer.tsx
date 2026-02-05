@@ -4,6 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import Hls from "hls.js";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+
 const SYNC_THRESHOLD = 0.35;
 const HEARTBEAT_MS = 3000;
 const VERSION_POLL_MS = 5000;
@@ -436,125 +443,151 @@ export default function SyncPlayer() {
   }
 
   return (
-    <main className="shell">
-      <header className="header">
-        <div className="title-block">
-          <p className="subtitle">Two-person playback sync</p>
-          <h1>Sync Player</h1>
-          <p className="subtitle">Stream videos from the videos/ folder with a shared timeline.</p>
+    <main className="layout-shell">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Two-person playback sync</p>
+          <h1 className="text-2xl font-semibold">Sync Player</h1>
+          <p className="text-sm text-muted-foreground">Stream videos from the videos/ folder with a shared timeline.</p>
         </div>
-        <div className="status">
-          <span className={`dot ${status === "Connected" ? "online" : ""}`}></span>
-          <span>{status}</span>
-        </div>
+        <Badge variant="outline" className="flex items-center gap-2">
+          <span className={`h-2 w-2 rounded-full ${status === "Connected" ? "bg-foreground" : "bg-muted"}`} />
+          {status}
+        </Badge>
       </header>
 
-      <section className="controls">
-        <label className="field">
-          <span>Video</span>
-          <select
-            value={selectedVideo}
-            onChange={(event) => {
-              setSelectedVideo(event.target.value);
-              pushState("video-change");
-            }}
-          >
-            {videos.length === 0 ? (
-              <option value="">No HLS-ready videos</option>
-            ) : (
-              videos.map((video) => (
-                <option key={video.name} value={video.name}>
-                  {video.name}
-                </option>
-              ))
-            )}
-          </select>
-        </label>
+      <section className="grid gap-4 md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.6fr)_auto]">
+        <Card>
+          <CardContent className="flex flex-col gap-2 p-4">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Video</span>
+            <Select
+              value={selectedVideo}
+              onValueChange={(value) => {
+                setSelectedVideo(value);
+                pushState("video-change");
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select video" />
+              </SelectTrigger>
+              <SelectContent>
+                {videos.length === 0 ? (
+                  <SelectItem value="none">No HLS-ready videos</SelectItem>
+                ) : (
+                  videos.map((video) => (
+                    <SelectItem key={video.name} value={video.name}>
+                      {video.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
 
-        <label className="toggle">
-          <input
-            type="checkbox"
-            checked={playAll}
-            onChange={(event) => {
-              setPlayAll(event.target.checked);
-              pushState("play-all");
-            }}
-          />
-          <span>Play all</span>
-        </label>
+        <Card>
+          <CardContent className="flex items-center justify-between gap-3 p-4">
+            <div>
+              <p className="text-sm font-medium">Play all</p>
+              <p className="text-xs text-muted-foreground">Auto-advance to next file.</p>
+            </div>
+            <Switch
+              checked={playAll}
+              onCheckedChange={(value) => {
+                setPlayAll(value);
+                pushState("play-all");
+              }}
+            />
+          </CardContent>
+        </Card>
 
-        <button className="ghost" type="button" onClick={() => socketRef.current?.emit("request-state", { requester: socketRef.current?.id })}>
+        <Button variant="outline" className="h-full" onClick={() => socketRef.current?.emit("request-state", { requester: socketRef.current?.id })}>
           Resync
-        </button>
+        </Button>
       </section>
 
-      <section className="main-grid">
-        <div className="player-area">
-          <video ref={playerRef} controls preload="metadata" crossOrigin="anonymous" />
-          <div className="meta">
-            <div>Peers: {peers}</div>
-            <div>Sync: {syncState}</div>
-          </div>
-        </div>
-
-        <div className="chat">
-          <div className="call">
-            <div className="call-label">Video call</div>
-            <div className="call-grid">
-              <video ref={localCallRef} autoPlay muted playsInline />
-              <video ref={remoteCallRef} autoPlay playsInline />
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]">
+        <Card>
+          <CardContent className="space-y-4 p-4">
+            <video ref={playerRef} controls preload="metadata" crossOrigin="anonymous" className="w-full rounded-lg bg-black" />
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>Peers: {peers}</span>
+              <span>Sync: {syncState}</span>
             </div>
-            <div className="call-actions">
-              <button className="ghost" type="button" onClick={startCall}>
-                Start
-              </button>
-              <button className="ghost" type="button" onClick={endCall}>
-                End
-              </button>
-            </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="chat-header">Chat</div>
-          <div className="chat-messages">
-            {messages.map((message, index) => (
-              <div key={`${message.at}-${index}`} className={`chat-message ${message.sender === socketRef.current?.id ? "mine" : ""}`}>
-                <div className="meta">
-                  <span>{message.sender === socketRef.current?.id ? "You" : "Peer"}</span>
-                  <span>
-                    {new Date(message.at).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                </div>
-                <div className="bubble">{message.text}</div>
+        <Card className="flex h-full flex-col">
+          <CardContent className="flex h-full flex-col gap-4 p-4">
+            <div className="space-y-3 rounded-lg border bg-background/60 p-3">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Video call</div>
+              <div className="grid grid-cols-2 gap-2">
+                <video ref={localCallRef} autoPlay muted playsInline className="h-20 w-full rounded-md bg-black object-cover" />
+                <video ref={remoteCallRef} autoPlay playsInline className="h-20 w-full rounded-md bg-black object-cover" />
               </div>
-            ))}
-          </div>
-          <form
-            className="chat-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const form = event.currentTarget;
-              const input = form.elements.namedItem("message") as HTMLInputElement | null;
-              if (!input) return;
-              const text = input.value.trim();
-              if (!text) return;
-              appendChatMessage(text, socketRef.current?.id ?? "local");
-              input.value = "";
-            }}
-          >
-            <input name="message" type="text" placeholder="Say something…" autoComplete="off" />
-            <button className="primary" type="submit">
-              Send
-            </button>
-          </form>
-        </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={startCall}>
+                  Start
+                </Button>
+                <Button variant="outline" className="flex-1" onClick={endCall}>
+                  End
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold">Chat</h2>
+              <span className="text-xs text-muted-foreground">{messages.length} messages</span>
+            </div>
+
+            <div className="flex-1 space-y-3 overflow-auto rounded-lg border bg-muted/40 p-3">
+              {messages.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Say hello to start the chat.</p>
+              ) : (
+                messages.map((message, index) => (
+                  <div
+                    key={`${message.at}-${index}`}
+                    className={`space-y-1 text-xs ${message.sender === socketRef.current?.id ? "text-right" : "text-left"}`}
+                  >
+                    <div className="text-[10px] text-muted-foreground">
+                      {message.sender === socketRef.current?.id ? "You" : "Peer"} ·{" "}
+                      {new Date(message.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                    <div
+                      className={`inline-block max-w-[80%] rounded-md border px-3 py-2 text-sm ${
+                        message.sender === socketRef.current?.id
+                          ? "bg-foreground text-background"
+                          : "bg-background"
+                      }`}
+                    >
+                      {message.text}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <form
+              className="flex gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const form = event.currentTarget;
+                const input = form.elements.namedItem("message") as HTMLInputElement | null;
+                if (!input) return;
+                const text = input.value.trim();
+                if (!text) return;
+                appendChatMessage(text, socketRef.current?.id ?? "local");
+                input.value = "";
+              }}
+            >
+              <Input name="message" placeholder="Say something…" autoComplete="off" />
+              <Button type="submit">Send</Button>
+            </form>
+          </CardContent>
+        </Card>
       </section>
 
-      <section className="notes">
-        <p>{hlsNote}</p>
-      </section>
+      {hlsNote ? <p className="text-sm text-muted-foreground">{hlsNote}</p> : null}
     </main>
   );
 }
