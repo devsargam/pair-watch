@@ -69,7 +69,7 @@ export default function SyncPlayer() {
 
   useEffect(() => {
     loadVideos();
-    const socket = io();
+    const socket = io(apiBase);
     socketRef.current = socket;
 
     socket.on("connect", () => {
@@ -229,9 +229,11 @@ export default function SyncPlayer() {
     };
   }, [selectedEntry]);
 
+  const apiBase = process.env.NEXT_PUBLIC_SERVER_URL ?? "http://localhost:3000";
+
   async function loadVideos() {
     try {
-      const response = await fetch("/api/videos", { cache: "no-store" });
+      const response = await fetch(`${apiBase}/api/videos`, { cache: "no-store" });
       const data = await response.json();
       const list: VideoEntry[] = (data.files ?? []).filter((video: VideoEntry) => video.hls);
       if (!list.length) {
@@ -345,7 +347,7 @@ export default function SyncPlayer() {
 
   async function checkVersion(shouldReload: boolean) {
     try {
-      const response = await fetch(`/api/version?t=${Date.now()}`, { cache: "no-store" });
+      const response = await fetch(`${apiBase}/api/version?t=${Date.now()}`, { cache: "no-store" });
       const data = await response.json();
       if (!serverVersionRef.current) {
         serverVersionRef.current = data.version;

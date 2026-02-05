@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "NODE_ENV=development node server.js",
+    "dev:server": "NODE_ENV=development node server.js",
+    "dev:frontend": "next dev -p 3001",
     "build": "next build",
     "start": "NODE_ENV=production node server.js",
     "tunnel": "cloudflared tunnel --url http://localhost:3000",
