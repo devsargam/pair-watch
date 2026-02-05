@@ -14,7 +14,11 @@ async function main() {
   await fs.promises.mkdir(hlsDir, { recursive: true });
 
   const entries = await fs.promises.readdir(videosDir, { withFileTypes: true });
-  const files = entries.filter((entry) => entry.isFile()).map((entry) => entry.name).sort();
+  const files = entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .filter(isVideoFile)
+    .sort();
 
   if (!files.length) {
     console.log("No videos found in videos/.");
@@ -78,6 +82,11 @@ function runFFmpeg(inputPath, outputDir, playlist) {
 
 function encodeHlsId(name) {
   return Buffer.from(name).toString("base64url");
+}
+
+function isVideoFile(name) {
+  const ext = path.extname(name).toLowerCase();
+  return [".mp4", ".mov", ".webm", ".mkv", ".m4v"].includes(ext);
 }
 
 async function fileExists(filePath) {
