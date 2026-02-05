@@ -206,7 +206,7 @@ export default function SyncPlayer() {
       hlsRef.current = null;
     }
 
-    const source = selectedEntry.hlsMasterPath;
+    const source = resolveUrl(selectedEntry.hlsMasterPath);
 
     if (Hls.isSupported()) {
       const hls = new Hls();
@@ -236,14 +236,19 @@ export default function SyncPlayer() {
       const response = await fetch(`${apiBase}/api/videos`, { cache: "no-store" });
       const data = await response.json();
       const list: VideoEntry[] = (data.files ?? []).filter((video: VideoEntry) => video.hls);
+      const resolved = list.map((video) => ({
+        ...video,
+        hlsPath: resolveUrl(video.hlsPath),
+        hlsMasterPath: resolveUrl(video.hlsMasterPath ?? video.hlsPath),
+      }));
       if (!list.length) {
         setHlsNote("No HLS-ready videos. Run `pnpm hls` and reload.");
         return;
       }
-      setVideos(list);
-      playlistRef.current = list.map((entry) => entry.name);
-      setSelectedVideo((prev) => prev || list[0].name);
-      restoreCachedState(list);
+      setVideos(resolved);
+      playlistRef.current = resolved.map((entry) => entry.name);
+      setSelectedVideo((prev) => prev || resolved[0].name);
+      restoreCachedState(resolved);
     } catch {
       setHlsNote("Failed to load video list.");
     }
@@ -592,4 +597,10 @@ export default function SyncPlayer() {
       {hlsNote ? <p className="text-sm text-muted-foreground">{hlsNote}</p> : null}
     </main>
   );
+
+  function resolveUrl(path: string | null) {
+    if (!path) return "";
+    if (path.startsWith("http")) return path;
+    return `${apiBase}${path}`;
+  }
 }
