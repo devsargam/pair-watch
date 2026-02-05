@@ -98,8 +98,17 @@ async function loadVideos() {
   }
 
   videoCatalog = files.slice();
-  videoCatalog = videoCatalog.filter((entry) => isVideoFile(entry.name));
+  videoCatalog = videoCatalog.filter((entry) => isVideoFile(entry.name) && entry.hls);
   playlist = videoCatalog.map((entry) => entry.name);
+
+  if (!videoCatalog.length) {
+    const option = document.createElement("option");
+    option.textContent = "No HLS-ready videos. Run `npm run hls`.";
+    option.value = "";
+    videoSelect.appendChild(option);
+    hlsNote.textContent = "No HLS-ready videos yet. Run `npm run hls` and reload.";
+    return;
+  }
 
   videoCatalog.forEach((entry) => {
     const option = document.createElement("option");
