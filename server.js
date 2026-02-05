@@ -39,12 +39,20 @@ app.get("/api/videos", async (_req, res) => {
       videos.map(async (name) => {
         const hlsId = encodeHlsId(name);
         const playlistPath = path.join(HLS_DIR, hlsId, "index.m3u8");
+        const subtitlePlaylistPath = path.join(HLS_DIR, hlsId, "index_vtt.m3u8");
         const hlsReady = await fileExists(playlistPath);
+        const hlsSubtitles = await fileExists(subtitlePlaylistPath);
         const normalized = normalizeName(name);
         return {
           name,
           hls: hlsReady,
           hlsPath: hlsReady ? `/hls/${hlsId}/index.m3u8` : null,
+          hlsMasterPath: hlsReady
+            ? hlsSubtitles
+              ? `/api/hls/${hlsId}/master.m3u8`
+              : `/hls/${hlsId}/index.m3u8`
+            : null,
+          hlsSubtitles,
           subtitles: subtitleMap.get(normalized) ?? [],
         };
       })
@@ -55,6 +63,40 @@ app.get("/api/videos", async (_req, res) => {
   }
 });
 
+app.get("/api/hls/:id/master.m3u8", async (req, res) => {
+  const safeId = path.basename(req.params.id);
+  const baseDir = path.join(HLS_DIR, safeId);
+
+  if (!baseDir.startsWith(HLS_DIR)) {
+    res.sendStatus(400);
+    return;
+  }
+
+  const videoPlaylist = path.join(baseDir, "index.m3u8");
+  const subtitlePlaylist = path.join(baseDir, "index_vtt.m3u8");
+
+  if (!(await fileExists(videoPlaylist))) {
+    res.sendStatus(404);
+    return;
+  }
+
+  const hasSubtitles = await fileExists(subtitlePlaylist);
+  const master = [
+    "#EXTM3U",
+    "#EXT-X-VERSION:3",
+    ...(hasSubtitles
+      ? [
+          '#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",DEFAULT=YES,AUTOSELECT=YES,LANGUAGE="en",URI="index_vtt.m3u8"',
+        ]
+      : []),
+    `#EXT-X-STREAM-INF:BANDWIDTH=1200000${hasSubtitles ? ',SUBTITLES="subs"' : ""}`,
+    "index.m3u8",
+    "",
+  ].join("\n");
+
+  res.type("application/vnd.apple.mpegurl");
+  res.send(master);
+});
 app.get("/api/subtitles/:name", async (req, res) => {
   const safeName = path.basename(req.params.name);
   const subtitlesPath = path.join(SUBTITLES_DIR, safeName);

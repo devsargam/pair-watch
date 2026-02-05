@@ -208,8 +208,9 @@ async function loadVideos() {
 function setVideo(filename) {
   if (!filename) return;
   const entry = videoCatalog.find((item) => item.name === filename);
-  const hlsPath = entry && entry.hls ? entry.hlsPath : null;
+  const hlsPath = entry && entry.hls ? entry.hlsMasterPath || entry.hlsPath : null;
   const subtitles = entry?.subtitles ?? [];
+  const useHlsSubtitles = entry?.hlsSubtitles ?? false;
 
   if (hlsPlayer) {
     hlsPlayer.destroy();
@@ -226,7 +227,9 @@ function setVideo(filename) {
   hlsNote.textContent = "";
 
   clearTracks();
-  addSubtitleTracks(subtitles);
+  if (!useHlsSubtitles) {
+    addSubtitleTracks(subtitles);
+  }
 
   if (window.Hls && window.Hls.isSupported()) {
     hlsPlayer = new window.Hls();
