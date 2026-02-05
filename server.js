@@ -62,6 +62,7 @@ app.get("/api/videos", async (_req, res) => {
 app.get("/api/hls/:id/master.m3u8", async (req, res) => {
   const safeId = path.basename(req.params.id);
   const baseDir = path.join(HLS_DIR, safeId);
+  const baseUrl = `/hls/${safeId}`;
 
   if (!baseDir.startsWith(HLS_DIR)) {
     res.sendStatus(400);
@@ -82,11 +83,11 @@ app.get("/api/hls/:id/master.m3u8", async (req, res) => {
     "#EXT-X-VERSION:3",
     ...(hasSubtitles
       ? [
-          '#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",DEFAULT=YES,AUTOSELECT=YES,LANGUAGE="en",URI="index_vtt.m3u8"',
+          `#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",DEFAULT=YES,AUTOSELECT=YES,LANGUAGE="en",URI="${baseUrl}/index_vtt.m3u8"`,
         ]
       : []),
     `#EXT-X-STREAM-INF:BANDWIDTH=1200000${hasSubtitles ? ',SUBTITLES="subs"' : ""}`,
-    "index.m3u8",
+    `${baseUrl}/index.m3u8`,
     "",
   ].join("\n");
 
