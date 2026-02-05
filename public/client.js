@@ -100,6 +100,18 @@ async function init() {
     applyRemoteState(state);
   });
 
+  socket.on("server-version", ({ version }) => {
+    if (!version) return;
+    if (!serverVersion) {
+      serverVersion = version;
+      return;
+    }
+    if (version !== serverVersion) {
+      cacheState(collectState());
+      location.reload();
+    }
+  });
+
   socket.on("chat", (message) => {
     if (!message) return;
     appendChatMessage(message, false);
@@ -320,7 +332,7 @@ function restoreCachedState() {
 
 async function checkVersion(shouldReload = false) {
   try {
-    const response = await fetch("/api/version", { cache: "no-store" });
+    const response = await fetch(`/api/version?t=${Date.now()}`, { cache: "no-store" });
     const data = await response.json();
     if (!serverVersion) {
       serverVersion = data.version;

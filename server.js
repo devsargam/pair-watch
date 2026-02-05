@@ -21,6 +21,7 @@ app.use("/", express.static(path.join(__dirname, "public")));
 app.use("/hls", express.static(HLS_DIR));
 
 app.get("/api/version", (_req, res) => {
+  res.set("Cache-Control", "no-store, max-age=0");
   res.json({ version: SERVER_VERSION });
 });
 
@@ -102,6 +103,7 @@ app.get("/videos/:name", async (req, res) => {
 });
 
 io.on("connection", (socket) => {
+  socket.emit("server-version", { version: SERVER_VERSION });
   io.emit("room-info", { count: io.engine.clientsCount });
   socket.broadcast.emit("request-state", { requester: socket.id });
 
