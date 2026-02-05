@@ -15,9 +15,14 @@ const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 const VIDEOS_DIR = path.join(__dirname, "videos");
 const HLS_DIR = path.join(__dirname, "hls");
+const SERVER_VERSION = Date.now().toString();
 
 app.use("/", express.static(path.join(__dirname, "public")));
 app.use("/hls", express.static(HLS_DIR));
+
+app.get("/api/version", (_req, res) => {
+  res.json({ version: SERVER_VERSION });
+});
 
 app.get("/api/videos", async (_req, res) => {
   try {

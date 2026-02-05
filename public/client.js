@@ -19,9 +19,12 @@ let lastLocalUpdate = 0;
 let playlist = [];
 let videoCatalog = [];
 let hlsPlayer = null;
+let serverVersion = null;
 
 const SYNC_THRESHOLD = 0.35; // seconds
 const HEARTBEAT_MS = 3000;
+const VERSION_POLL_MS = 5000;
+const STATE_CACHE_KEY = "pairwatch:lastState";
 
 init();
 
@@ -30,6 +33,8 @@ async function init() {
   setStatus("Connected", true);
   syncStateEl.textContent = "Waiting";
   pushState("join");
+  await checkVersion();
+  restoreCachedState();
 
   resyncButton.addEventListener("click", () => {
     socket.emit("request-state", { requester: socket.id });
@@ -104,6 +109,10 @@ async function init() {
     if (player.paused) return;
     pushState("heartbeat");
   }, HEARTBEAT_MS);
+
+  setInterval(async () => {
+    await checkVersion(true);
+  }, VERSION_POLL_MS);
 }
 
 async function loadVideos() {
@@ -222,6 +231,8 @@ function applyRemoteState(state) {
     player.play().catch(() => {});
   }
 
+  cacheState(state);
+
   setTimeout(() => {
     isApplyingRemote = false;
     syncStateEl.textContent = "In sync";
@@ -268,3 +279,62 @@ function appendChatMessage(message, isMine) {
   chatMessages.appendChild(wrapper);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
+
+function cacheState(state) {
+  if (!state || !state.video) return;
+  const payload = {
+    video: state.video,
+    time: state.time || 0,
+    paused: state.paused ?? true,
+    playbackRate: state.playbackRate || 1,
+    playAll: state.playAll ?? false,
+    at: Date.now(),
+  };
+  localStorage.setItem(STATE_CACHE_KEY, JSON.stringify(payload));
+}
+
+function restoreCachedState() {
+  const raw = localStorage.getItem(STATE_CACHE_KEY);
+  if (!raw) return;
+  let cached;
+  try {
+    cached = JSON.parse(raw);
+  } catch (_err) {
+    return;
+  }
+  if (!cached || !cached.video) return;
+  if (videoCatalog.length && !videoCatalog.find((entry) => entry.name === cached.video)) {
+    return;
+  }
+  videoSelect.value = cached.video;
+  setVideo(cached.video);
+  const desired = {
+    video: cached.video,
+    paused: cached.paused,
+    time: cached.time,
+    playbackRate: cached.playbackRate,
+    playAll: cached.playAll,
+  };
+  applyRemoteState(desired);
+}
+
+async function checkVersion(shouldReload = false) {
+  try {
+    const response = await fetch("/api/version", { cache: "no-store" });
+    const data = await response.json();
+    if (!serverVersion) {
+      serverVersion = data.version;
+      return;
+    }
+    if (data.version && data.version !== serverVersion && shouldReload) {
+      cacheState(collectState());
+      location.reload();
+    }
+  } catch (_err) {
+    // ignore polling errors
+  }
+}
+
+window.addEventListener("beforeunload", () => {
+  cacheState(collectState());
+});
