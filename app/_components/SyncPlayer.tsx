@@ -212,7 +212,13 @@ export default function SyncPlayer() {
 
   useEffect(() => {
     const video = playerRef.current;
-    if (!video || !selectedEntry?.hlsMasterPath) return;
+    if (!video || !selectedEntry?.hlsMasterPath) {
+      if (video) {
+        video.removeAttribute("src");
+        video.load();
+      }
+      return;
+    }
 
     if (hlsRef.current) {
       hlsRef.current.destroy();
@@ -290,6 +296,11 @@ export default function SyncPlayer() {
   function applyRemoteState(state: PlaybackState) {
     const video = playerRef.current;
     if (!video) return;
+
+    if (state.video && !videos.find((entry) => entry.name === state.video)) {
+      setHlsNote(`Video not available on this device: ${state.video}`);
+      return;
+    }
 
     isApplyingRemoteRef.current = true;
     setSyncState(state.reason ? `Syncing (${state.reason})` : "Syncing");
