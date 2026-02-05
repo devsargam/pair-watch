@@ -64,12 +64,24 @@ if [[ -z "$SERVER_URL" || -z "$FRONTEND_URL" ]]; then
 fi
 
 cat <<EOT
+NEXT_PUBLIC_SERVER_URL=$SERVER_URL
+EOT > "$ROOT_DIR/.env.local"
+
+if [[ -n "${FRONTEND_PID:-}" ]] && kill -0 "$FRONTEND_PID" 2>/dev/null; then
+  kill "$FRONTEND_PID" || true
+  pnpm dev:frontend >"$FRONTEND_LOG" 2>&1 &
+  FRONTEND_PID=$!
+fi
+
+cat <<EOT
 Cloudflare tunnels are up:
 - Server:   $SERVER_URL
 - Frontend: $FRONTEND_URL
 
-Set this in .env.local and restart the frontend if needed:
-NEXT_PUBLIC_SERVER_URL=$SERVER_URL
+.env.local has been updated and the frontend restarted.
+
+Open:
+$FRONTEND_URL
 
 Press Ctrl+C to stop everything.
 EOT
