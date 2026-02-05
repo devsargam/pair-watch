@@ -165,6 +165,25 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("chat", message);
   });
 
+  socket.on("call-offer", ({ offer }) => {
+    if (!offer) return;
+    socket.broadcast.emit("call-offer", { offer });
+  });
+
+  socket.on("call-answer", ({ answer }) => {
+    if (!answer) return;
+    socket.broadcast.emit("call-answer", { answer });
+  });
+
+  socket.on("call-ice", ({ candidate }) => {
+    if (!candidate) return;
+    socket.broadcast.emit("call-ice", { candidate });
+  });
+
+  socket.on("call-end", () => {
+    socket.broadcast.emit("call-end");
+  });
+
   socket.on("disconnect", () => {
     io.emit("room-info", { count: io.engine.clientsCount });
   });

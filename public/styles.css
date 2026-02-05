@@ -187,6 +187,47 @@ video {
   min-height: 100%;
 }
 
+.call {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px;
+  background: var(--panel-light);
+}
+
+.call-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.call-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.call-grid video {
+  width: 100%;
+  height: 90px;
+  background: #0b0b0b;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.call-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.call-actions button {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+}
+
 .chat-header {
   font-size: 0.9rem;
   font-weight: 600;

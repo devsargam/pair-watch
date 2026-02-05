@@ -12,6 +12,10 @@ const hlsNote = document.getElementById("hls-note");
 const chatMessages = document.getElementById("chat-messages");
 const chatForm = document.getElementById("chat-form");
 const chatInput = document.getElementById("chat-input");
+const callStart = document.getElementById("call-start");
+const callEnd = document.getElementById("call-end");
+const localCall = document.getElementById("local-call");
+const remoteCall = document.getElementById("remote-call");
 
 let isApplyingRemote = false;
 let pendingRemoteState = null;
@@ -20,6 +24,8 @@ let playlist = [];
 let videoCatalog = [];
 let hlsPlayer = null;
 let serverVersion = null;
+let localStream = null;
+let peerConnection = null;
 
 const SYNC_THRESHOLD = 0.35; // seconds
 const HEARTBEAT_MS = 3000;
@@ -53,6 +59,14 @@ async function init() {
     appendChatMessage(message, true);
     socket.emit("chat", message);
     chatInput.value = "";
+  });
+
+  callStart.addEventListener("click", async () => {
+    await startCall();
+  });
+
+  callEnd.addEventListener("click", () => {
+    endCall();
   });
 
   videoSelect.addEventListener("change", () => {
@@ -116,6 +130,33 @@ async function init() {
   socket.on("chat", (message) => {
     if (!message) return;
     appendChatMessage(message, false);
+  });
+
+  socket.on("call-offer", async ({ offer }) => {
+    if (!offer) return;
+    await ensurePeerConnection();
+    await peerConnection.setRemoteDescription(offer);
+    const answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+    socket.emit("call-answer", { answer });
+  });
+
+  socket.on("call-answer", async ({ answer }) => {
+    if (!answer || !peerConnection) return;
+    await peerConnection.setRemoteDescription(answer);
+  });
+
+  socket.on("call-ice", async ({ candidate }) => {
+    if (!candidate || !peerConnection) return;
+    try {
+      await peerConnection.addIceCandidate(candidate);
+    } catch (_err) {
+      // ignore ICE errors
+    }
+  });
+
+  socket.on("call-end", () => {
+    endCall();
   });
 
   setInterval(() => {
@@ -328,6 +369,66 @@ function showFirstTextTrack() {
   });
 }
 
+async function startCall() {
+  await ensurePeerConnection();
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
+  socket.emit("call-offer", { offer });
+}
+
+async function ensurePeerConnection() {
+  if (!localStream) {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    localCall.srcObject = localStream;
+  }
+
+  if (!peerConnection) {
+    peerConnection = new RTCPeerConnection({
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+    });
+
+    localStream.getTracks().forEach((track) => {
+      peerConnection.addTrack(track, localStream);
+    });
+
+    peerConnection.ontrack = (event) => {
+      if (remoteCall.srcObject !== event.streams[0]) {
+        remoteCall.srcObject = event.streams[0];
+      }
+    };
+
+    peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.emit("call-ice", { candidate: event.candidate });
+      }
+    };
+  }
+}
+
+function endCall() {
+  if (peerConnection) {
+    peerConnection.ontrack = null;
+    peerConnection.onicecandidate = null;
+    peerConnection.close();
+    peerConnection = null;
+  }
+  if (remoteCall.srcObject) {
+    remoteCall.srcObject = null;
+  }
+  if (localStream) {
+    localStream.getTracks().forEach((track) => track.stop());
+    localStream = null;
+    localCall.srcObject = null;
+  }
+  socket.emit("call-end");
+}
+
+window.addEventListener("beforeunload", () => {
+  if (peerConnection || localStream) {
+    socket.emit("call-end");
+  }
+});
+
 function cacheState(state) {
   if (!state || !state.video) return;
   const payload = {
@@ -385,4 +486,7 @@ async function checkVersion(shouldReload = false) {
 
 window.addEventListener("beforeunload", () => {
   cacheState(collectState());
+  if (peerConnection || localStream) {
+    socket.emit("call-end");
+  }
 });

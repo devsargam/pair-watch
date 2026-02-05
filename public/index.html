@@ -42,6 +42,17 @@
         </div>
 
         <div class="chat">
+          <div class="call">
+            <div class="call-label">Video call</div>
+            <div class="call-grid">
+              <video id="local-call" autoplay muted playsinline></video>
+              <video id="remote-call" autoplay playsinline></video>
+            </div>
+            <div class="call-actions">
+              <button id="call-start" class="ghost">Start</button>
+              <button id="call-end" class="ghost">End</button>
+            </div>
+          </div>
           <div class="chat-header">Chat</div>
           <div id="chat-messages" class="chat-messages"></div>
           <form id="chat-form" class="chat-form">
