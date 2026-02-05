@@ -81,7 +81,8 @@
   }
 }
 
-.player-wrap:fullscreen {
+.player-wrap:fullscreen,
+.player-wrap:-webkit-full-screen {
   width: 100%;
   height: 100%;
   background: #000;
@@ -90,13 +91,15 @@
   justify-content: center;
 }
 
-.player-wrap:fullscreen video {
+.player-wrap:fullscreen video,
+.player-wrap:-webkit-full-screen video {
   width: 100%;
   height: 100%;
   border-radius: 0;
   object-fit: contain;
 }
 
-.player-wrap:fullscreen .reaction-layer {
+.player-wrap:fullscreen .reaction-layer,
+.player-wrap:-webkit-full-screen .reaction-layer {
   inset: 0;
 }
