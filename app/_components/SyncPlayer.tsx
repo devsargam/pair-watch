@@ -51,6 +51,7 @@ export default function SyncPlayer() {
   const lastLocalUpdateRef = useRef(0);
   const playlistRef = useRef<string[]>([]);
   const requestedVideoRef = useRef<string>("");
+  const hasRemoteStateRef = useRef(false);
   const serverVersionRef = useRef<string | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -268,7 +269,9 @@ export default function SyncPlayer() {
       playlistRef.current = resolved.map((entry) => entry.name);
       const initialVideo = requestedVideoRef.current || resolved[0].name;
       setSelectedVideo(initialVideo);
-      restoreCachedState(resolved);
+      if (!hasRemoteStateRef.current && !requestedVideoRef.current) {
+        restoreCachedState(resolved);
+      }
     } catch {
       setHlsNote("Failed to load video list.");
     }
@@ -297,6 +300,7 @@ export default function SyncPlayer() {
     const video = playerRef.current;
     if (!video) return;
 
+    hasRemoteStateRef.current = true;
     if (state.video && !videos.find((entry) => entry.name === state.video)) {
       setHlsNote(`Video not available on this device: ${state.video}`);
       return;
