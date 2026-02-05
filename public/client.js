@@ -98,6 +98,7 @@ async function loadVideos() {
   }
 
   videoCatalog = files.slice();
+  videoCatalog = videoCatalog.filter((entry) => isVideoFile(entry.name));
   playlist = videoCatalog.map((entry) => entry.name);
 
   videoCatalog.forEach((entry) => {
@@ -206,4 +207,9 @@ function getNextVideo() {
   const currentIndex = playlist.indexOf(videoSelect.value);
   if (currentIndex === -1) return playlist[0];
   return playlist[(currentIndex + 1) % playlist.length];
+}
+
+function isVideoFile(name) {
+  const ext = name.split(".").pop()?.toLowerCase();
+  return ["mp4", "mov", "webm", "mkv", "m4v"].includes(ext);
 }
