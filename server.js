@@ -175,7 +175,7 @@ io.on("connection", (socket) => {
 
   socket.on("player-reaction", (payload) => {
     if (!payload || !payload.emoji) return;
-    socket.broadcast.emit("player-reaction", payload);
+    io.emit("player-reaction", payload);
   });
 
   socket.on("disconnect", () => {

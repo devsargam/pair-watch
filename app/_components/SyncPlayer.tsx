@@ -586,7 +586,6 @@ export default function SyncPlayer() {
   }
 
   function emitPlayerReaction(emoji: string) {
-    spawnReaction(emoji);
     socketRef.current?.emit("player-reaction", { emoji });
   }
 
