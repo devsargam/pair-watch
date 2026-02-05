@@ -15,7 +15,6 @@ const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 const VIDEOS_DIR = path.join(__dirname, "videos");
 const HLS_DIR = path.join(__dirname, "hls");
-const SUBTITLES_DIR = path.join(__dirname, "subtitles");
 const SERVER_VERSION = Date.now().toString();
 
 app.use("/", express.static(path.join(__dirname, "public")));
@@ -34,7 +33,6 @@ app.get("/api/videos", async (_req, res) => {
       .map((entry) => entry.name)
       .sort();
     const videos = files.filter(isVideoFile);
-    const subtitleMap = await buildSubtitleMap();
     const payload = await Promise.all(
       videos.map(async (name) => {
         const hlsId = encodeHlsId(name);
@@ -42,7 +40,6 @@ app.get("/api/videos", async (_req, res) => {
         const subtitlePlaylistPath = path.join(HLS_DIR, hlsId, "index_vtt.m3u8");
         const hlsReady = await fileExists(playlistPath);
         const hlsSubtitles = await fileExists(subtitlePlaylistPath);
-        const normalized = normalizeName(name);
         return {
           name,
           hls: hlsReady,
@@ -53,7 +50,6 @@ app.get("/api/videos", async (_req, res) => {
               : `/hls/${hlsId}/index.m3u8`
             : null,
           hlsSubtitles,
-          subtitles: subtitleMap.get(normalized) ?? [],
         };
       })
     );
@@ -96,40 +92,6 @@ app.get("/api/hls/:id/master.m3u8", async (req, res) => {
 
   res.type("application/vnd.apple.mpegurl");
   res.send(master);
-});
-app.get("/api/subtitles/:name", async (req, res) => {
-  const safeName = path.basename(req.params.name);
-  const subtitlesPath = path.join(SUBTITLES_DIR, safeName);
-  const videosPath = path.join(VIDEOS_DIR, safeName);
-
-  if (!subtitlesPath.startsWith(SUBTITLES_DIR) || !videosPath.startsWith(VIDEOS_DIR)) {
-    res.sendStatus(400);
-    return;
-  }
-
-  const filePath = (await fileExists(subtitlesPath)) ? subtitlesPath : videosPath;
-  if (!(await fileExists(filePath))) {
-    res.sendStatus(404);
-    return;
-  }
-
-  const ext = path.extname(filePath).toLowerCase();
-  try {
-    if (ext === ".vtt") {
-      res.type("text/vtt");
-      fs.createReadStream(filePath).pipe(res);
-      return;
-    }
-    if (ext === ".srt") {
-      const raw = await fs.promises.readFile(filePath, "utf8");
-      res.type("text/vtt");
-      res.send(convertSrtToVtt(raw));
-      return;
-    }
-    res.sendStatus(415);
-  } catch (_err) {
-    res.sendStatus(500);
-  }
 });
 app.get("/videos/:name", async (req, res) => {
   const safeName = path.basename(req.params.name);
@@ -249,46 +211,6 @@ function isVideoFile(name) {
   return [".mp4", ".mov", ".webm", ".mkv", ".m4v"].includes(ext);
 }
 
-function isSubtitleFile(name) {
-  const ext = path.extname(name).toLowerCase();
-  return [".vtt", ".srt"].includes(ext);
-}
-
-function normalizeName(name) {
-  const base = path.basename(name, path.extname(name));
-  const cleaned = base.toLowerCase();
-  const normalized = cleaned
-    .replace(/s(\d{1,2})\s*e(\d{1,2})/g, (_m, s, e) => `s${Number(s)}e${Number(e)}`)
-    .replace(/(\d{1,2})x(\d{1,2})/g, (_m, s, e) => `s${Number(s)}e${Number(e)}`)
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(
-      /\b(480p|720p|1080p|2160p|4k|hdr|dvdrip|hdtv|webrip|webdl|bluray|bdrip|x264|x265|h264|h265|aac|dts|subs|sub|eng|en)\b/g,
-      " "
-    )
-    .replace(/\s+/g, " ")
-    .trim();
-  return normalized;
-}
-
-async function buildSubtitleMap() {
-  const map = new Map();
-  const subtitleFiles = [];
-
-  const local = await safeReadDir(VIDEOS_DIR);
-  subtitleFiles.push(...local.filter(isSubtitleFile));
-
-  const external = await safeReadDir(SUBTITLES_DIR);
-  subtitleFiles.push(...external.filter(isSubtitleFile));
-
-  for (const file of subtitleFiles) {
-    const key = normalizeName(file);
-    const list = map.get(key) ?? [];
-    if (!list.includes(file)) list.push(file);
-    map.set(key, sortSubtitles(list));
-  }
-  return map;
-}
-
 function encodeHlsId(name) {
   return Buffer.from(name).toString("base64url");
 }
@@ -300,34 +222,4 @@ async function fileExists(filePath) {
   } catch (_err) {
     return false;
   }
-}
-
-async function safeReadDir(dirPath) {
-  try {
-    const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
-    return entries.filter((entry) => entry.isFile()).map((entry) => entry.name);
-  } catch (_err) {
-    return [];
-  }
-}
-
-function convertSrtToVtt(srt) {
-  const content = srt.replace(/\r/g, "").trim();
-  const lines = content.split("\n");
-  const converted = lines.map((line) => line.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2"));
-  return `WEBVTT\n\n${converted.join("\n")}\n`;
-}
-
-function sortSubtitles(list) {
-  const priorities = ["hdtv", "lol", "webdl", "webrip", "bluray", "bdrip", "dvdrip"];
-  return list.slice().sort((a, b) => scoreSubtitle(b, priorities) - scoreSubtitle(a, priorities));
-}
-
-function scoreSubtitle(name, priorities) {
-  const lowered = name.toLowerCase();
-  let score = 0;
-  priorities.forEach((token, index) => {
-    if (lowered.includes(token)) score += 10 - index;
-  });
-  return score;
 }

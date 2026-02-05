@@ -209,8 +209,6 @@ function setVideo(filename) {
   if (!filename) return;
   const entry = videoCatalog.find((item) => item.name === filename);
   const hlsPath = entry && entry.hls ? entry.hlsMasterPath || entry.hlsPath : null;
-  const subtitles = entry?.subtitles ?? [];
-  const useHlsSubtitles = entry?.hlsSubtitles ?? false;
 
   if (hlsPlayer) {
     hlsPlayer.destroy();
@@ -227,9 +225,6 @@ function setVideo(filename) {
   hlsNote.textContent = "";
 
   clearTracks();
-  if (!useHlsSubtitles) {
-    addSubtitleTracks(subtitles);
-  }
 
   if (window.Hls && window.Hls.isSupported()) {
     hlsPlayer = new window.Hls();
@@ -344,25 +339,6 @@ function appendChatMessage(message, isMine) {
 function clearTracks() {
   const tracks = Array.from(player.querySelectorAll("track"));
   tracks.forEach((track) => track.remove());
-}
-
-function addSubtitleTracks(subtitles) {
-  if (!subtitles.length) return;
-  subtitles.forEach((file, index) => {
-    const track = document.createElement("track");
-    track.kind = "subtitles";
-    track.label = subtitleLabel(file, index);
-    track.srclang = "en";
-    track.src = `/api/subtitles/${encodeURIComponent(file)}`;
-    track.default = index === 0;
-    player.appendChild(track);
-  });
-  showFirstTextTrack();
-}
-
-function subtitleLabel(file, index) {
-  const name = file.replace(/\.[^.]+$/, "");
-  return name || `Sub ${index + 1}`;
 }
 
 function showFirstTextTrack() {
