@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 
 const SYNC_THRESHOLD = 3.5;
 const HEARTBEAT_MS = 3000;
@@ -30,7 +29,6 @@ type PlaybackState = {
   paused: boolean;
   time: number;
   playbackRate: number;
-  playAll: boolean;
   reason?: string;
 };
 
@@ -60,7 +58,6 @@ export default function SyncPlayer() {
   const isApplyingRemoteRef = useRef(false);
   const pendingRemoteRef = useRef<PlaybackState | null>(null);
   const lastLocalUpdateRef = useRef(0);
-  const playlistRef = useRef<string[]>([]);
   const requestedVideoRef = useRef<string>("");
   const hasRemoteStateRef = useRef(false);
   const serverVersionRef = useRef<string | null>(null);
@@ -70,7 +67,6 @@ export default function SyncPlayer() {
 
   const [videos, setVideos] = useState<VideoEntry[]>([]);
   const [selectedVideo, setSelectedVideo] = useState("");
-  const [playAll, setPlayAll] = useState(false);
   const [peers, setPeers] = useState(0);
   const [syncState, setSyncState] = useState("Idle");
   const [status, setStatus] = useState("Connecting");
@@ -235,20 +231,12 @@ export default function SyncPlayer() {
       }
       showFirstTextTrack();
     };
-    const handleEnded = () => {
-      if (!playAll) return;
-      const next = getNextVideo();
-      if (!next) return;
-      setSelectedVideo(next);
-      pushState("auto-next");
-    };
 
     video.addEventListener("play", handlePlay);
     video.addEventListener("pause", handlePause);
     video.addEventListener("seeked", handleSeeked);
     video.addEventListener("ratechange", handleRateChange);
     video.addEventListener("loadedmetadata", handleLoaded);
-    video.addEventListener("ended", handleEnded);
 
     return () => {
       video.removeEventListener("play", handlePlay);
@@ -256,9 +244,8 @@ export default function SyncPlayer() {
       video.removeEventListener("seeked", handleSeeked);
       video.removeEventListener("ratechange", handleRateChange);
       video.removeEventListener("loadedmetadata", handleLoaded);
-      video.removeEventListener("ended", handleEnded);
     };
-  }, [playAll]);
+  }, []);
 
   useEffect(() => {
     const video = playerRef.current;
@@ -278,7 +265,17 @@ export default function SyncPlayer() {
     const source = resolveUrl(selectedEntry.hlsMasterPath);
 
     if (Hls.isSupported()) {
-      const hls = new Hls();
+      const hls = new Hls({
+        maxBufferLength: 30,
+        maxBufferSize: 60 * 1000 * 1000,
+        backBufferLength: 30,
+        fragLoadingMaxRetry: 6,
+        fragLoadingRetryDelay: 500,
+        fragLoadingMaxRetryTimeout: 8000,
+        levelLoadingMaxRetry: 6,
+        levelLoadingRetryDelay: 500,
+        levelLoadingMaxRetryTimeout: 8000,
+      });
       hlsRef.current = hls;
       hls.on(Hls.Events.MANIFEST_PARSED, () => enableHlsSubtitles(hls));
       hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => enableHlsSubtitles(hls));
@@ -315,7 +312,6 @@ export default function SyncPlayer() {
         return;
       }
       setVideos(resolved);
-      playlistRef.current = resolved.map((entry) => entry.name);
       const initialVideo = requestedVideoRef.current || resolved[0].name;
       setSelectedVideo(initialVideo);
       if (!hasRemoteStateRef.current && !requestedVideoRef.current) {
@@ -341,7 +337,6 @@ export default function SyncPlayer() {
       paused: video?.paused ?? true,
       time: video?.currentTime ?? 0,
       playbackRate: video?.playbackRate ?? 1,
-      playAll,
     };
   }
 
@@ -366,10 +361,6 @@ export default function SyncPlayer() {
       return;
     }
 
-    if (typeof state.playAll === "boolean") {
-      setPlayAll(state.playAll);
-    }
-
     if (Math.abs(video.currentTime - state.time) > SYNC_THRESHOLD) {
       video.currentTime = state.time;
     }
@@ -392,14 +383,6 @@ export default function SyncPlayer() {
     }, 100);
   }
 
-  function getNextVideo() {
-    const playlist = playlistRef.current;
-    if (!playlist.length) return null;
-    const currentIndex = playlist.indexOf(selectedVideo);
-    if (currentIndex === -1) return playlist[0];
-    return playlist[(currentIndex + 1) % playlist.length];
-  }
-
   function cacheState(state: PlaybackState) {
     if (!state.video) return;
     const payload = {
@@ -407,7 +390,6 @@ export default function SyncPlayer() {
       time: state.time || 0,
       paused: state.paused ?? true,
       playbackRate: state.playbackRate || 1,
-      playAll: state.playAll ?? false,
       at: Date.now(),
     };
     localStorage.setItem(STATE_CACHE_KEY, JSON.stringify(payload));
@@ -425,7 +407,6 @@ export default function SyncPlayer() {
     if (!cached?.video) return;
     if (!list.find((entry) => entry.name === cached?.video)) return;
     setSelectedVideo(cached.video);
-    setPlayAll(cached.playAll ?? false);
     pendingRemoteRef.current = cached;
   }
 
@@ -621,7 +602,7 @@ export default function SyncPlayer() {
         </div>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.6fr)_auto]">
+      <section className="grid gap-4 md:grid-cols-[minmax(0,1.2fr)]">
         <Card>
           <CardContent className="flex flex-col gap-2 p-4">
             <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Video</span>
@@ -650,26 +631,6 @@ export default function SyncPlayer() {
             </Select>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardContent className="flex items-center justify-between gap-3 p-4">
-            <div>
-              <p className="text-sm font-medium">Play all</p>
-              <p className="text-xs text-muted-foreground">Auto-advance to next file.</p>
-            </div>
-            <Switch
-              checked={playAll}
-              onCheckedChange={(value) => {
-                setPlayAll(value);
-                pushState("play-all");
-              }}
-            />
-          </CardContent>
-        </Card>
-
-        <Button variant="outline" className="h-full" onClick={() => socketRef.current?.emit("request-state", { requester: socketRef.current?.id })}>
-          Resync
-        </Button>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]">
@@ -679,7 +640,7 @@ export default function SyncPlayer() {
               <video
                 ref={playerRef}
                 controls
-                preload="metadata"
+                preload="auto"
                 crossOrigin="anonymous"
                 className="w-full rounded-lg bg-black"
               />

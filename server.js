@@ -44,7 +44,24 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use("/hls", express.static(HLS_DIR));
+app.use(
+  "/hls",
+  express.static(HLS_DIR, {
+    setHeaders(res, filePath) {
+      if (filePath.endsWith(".m3u8")) {
+        res.setHeader("Cache-Control", "no-cache");
+        return;
+      }
+      if (filePath.endsWith(".vtt")) {
+        res.setHeader("Cache-Control", "public, max-age=3600");
+        return;
+      }
+      if (filePath.endsWith(".ts")) {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      }
+    },
+  })
+);
 
 app.get("/api/version", (_req, res) => {
   res.set("Cache-Control", "no-store, max-age=0");

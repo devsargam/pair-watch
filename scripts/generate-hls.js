@@ -20,12 +20,24 @@ async function main() {
     .filter(isVideoFile)
     .sort();
 
-  if (!files.length) {
+  const requested = process.argv.slice(2);
+  const selection = requested.length
+    ? files.filter((name) => requested.includes(name))
+    : files;
+
+  if (!selection.length) {
     console.log("No videos found in videos/.");
     return;
   }
 
-  for (const file of files) {
+  if (requested.length && selection.length !== requested.length) {
+    const missing = requested.filter((name) => !selection.includes(name));
+    if (missing.length) {
+      console.log(`Skipping missing videos: ${missing.join(", ")}`);
+    }
+  }
+
+  for (const file of selection) {
     const inputPath = path.join(videosDir, file);
     const hlsId = encodeHlsId(file);
     const outputDir = path.join(hlsDir, hlsId);
@@ -46,25 +58,46 @@ async function main() {
 function runFFmpeg(inputPath, outputDir, playlist) {
   return new Promise((resolve, reject) => {
     const segmentPattern = path.join(outputDir, "%03d.ts");
+    const segmentSeconds = 2;
     const args = [
       "-i",
       inputPath,
       "-preset",
       "veryfast",
+      "-c:v",
+      "libx264",
+      "-profile:v",
+      "main",
+      "-level",
+      "4.1",
+      "-crf",
+      "23",
+      "-maxrate",
+      "3500k",
+      "-bufsize",
+      "7000k",
       "-g",
+      "48",
+      "-keyint_min",
       "48",
       "-sc_threshold",
       "0",
-      "-c:v",
-      "libx264",
+      "-force_key_frames",
+      `expr:gte(t,n_forced*${segmentSeconds})`,
       "-c:a",
       "aac",
       "-b:a",
       "128k",
+      "-ac",
+      "2",
       "-hls_time",
-      "4",
+      String(segmentSeconds),
       "-hls_list_size",
       "0",
+      "-hls_playlist_type",
+      "vod",
+      "-hls_flags",
+      "independent_segments",
       "-hls_segment_filename",
       segmentPattern,
       playlist,

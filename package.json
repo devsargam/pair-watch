@@ -4,13 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev:server": "NODE_ENV=development node server.js",
+    "dev:server": "NODE_ENV=development node --watch server.js",
     "dev:frontend": "next dev -p 3001",
     "tunnel:quick": "bash scripts/quick-tunnel.sh",
     "build": "next build",
     "start": "NODE_ENV=production node server.js",
     "tunnel": "cloudflared tunnel --url http://localhost:3000",
-    "hls": "node scripts/generate-hls.js"
+    "hls": "node scripts/generate-hls.js",
+    "hls:tui": "node scripts/hls-tui.js"
   },
   "dependencies": {
     "@radix-ui/react-select": "^2.1.2",
