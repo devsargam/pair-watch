@@ -70,6 +70,8 @@ function runFFmpeg(inputPath, outputDir, playlist) {
       "main",
       "-level",
       "4.1",
+      "-pix_fmt",
+      "yuv420p",
       "-crf",
       "23",
       "-maxrate",
