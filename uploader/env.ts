@@ -1,3 +1,4 @@
+import { err, ok, type Result } from "neverthrow";
 import { z } from "zod";
 
 const EnvSchema = z
@@ -23,15 +24,13 @@ export type UploaderEnv = {
   concurrency: number;
 };
 
-export function loadEnv(): UploaderEnv {
-  let env: z.infer<typeof EnvSchema>;
-  try {
-    env = EnvSchema.parse(Bun.env);
-  } catch (error) {
-    console.error("Invalid environment variables.");
-    console.error(error);
-    process.exit(1);
+export function loadEnv(): Result<UploaderEnv, Error> {
+  const parsed = EnvSchema.safeParse(Bun.env);
+  if (!parsed.success) {
+    return err(new Error(parsed.error.message));
   }
+
+  const env = parsed.data;
 
   const accessKeyId = env.R2_ACCESS_KEY_ID;
   const secretAccessKey = env.R2_SECRET_ACCESS_KEY;
@@ -41,12 +40,12 @@ export function loadEnv(): UploaderEnv {
   const prefix = (env.R2_PREFIX ?? "").replace(/^\/+|\/+$/g, "");
   const concurrency = Number.parseInt(env.R2_CONCURRENCY ?? "6", 10) || 6;
 
-  return {
+  return ok({
     accessKeyId,
     secretAccessKey,
     endpoint,
     bucket,
     prefix,
     concurrency,
-  };
+  });
 }

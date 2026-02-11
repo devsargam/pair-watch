@@ -1,6 +1,9 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import readline from "readline/promises";
+import { stdin as input, stdout as output } from "process";
+import { ResultAsync } from "neverthrow";
 import { loadEnv } from "./env";
 import { runWithConcurrency, walkFiles } from "./utils";
 import { selectFiles } from "./tui";
@@ -11,7 +14,7 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const hlsDir = path.join(rootDir, "hls");
 
-const env = loadEnv();
+const env = unwrapOrExit(loadEnv());
 
 if (!fs.existsSync(hlsDir)) {
   console.error(`HLS directory not found: ${hlsDir}`);
@@ -29,7 +32,12 @@ const credentials = {
 
 const client = new Bun.S3Client(credentials);
 
-const files = await walkFiles(hlsDir);
+const files = await unwrapOrExitAsync(
+  ResultAsync.fromPromise(
+    walkFiles(hlsDir),
+    (error) => toError("Failed to read HLS directory.", error),
+  ),
+);
 if (!files.length) {
   console.log("No HLS files to upload.");
   process.exit(0);
@@ -40,7 +48,7 @@ if (!selectedFiles.length) {
   process.exit(0);
 }
 
-const existingKeys = await listAllKeys(prefix);
+const existingKeys = await unwrapOrExitAsync(listAllKeys(prefix));
 const toUpload = selectedFiles.filter((filePath) => {
   const relativePath = path
     .relative(hlsDir, filePath)
@@ -61,21 +69,26 @@ if (!toUpload.length) {
 
 console.log(`Uploading ${toUpload.length} file(s) to ${env.bucket}...`);
 
-await runWithConcurrency(toUpload, env.concurrency, async (filePath) => {
-  const relativePath = path
-    .relative(hlsDir, filePath)
-    .replaceAll(path.sep, "/");
-  const key = prefix ? `${prefix}/${relativePath}` : relativePath;
-  const file = Bun.file(filePath);
-  const { contentType, cacheControl } = resolveHeaders(filePath);
+await unwrapOrExitAsync(
+  ResultAsync.fromPromise(
+    runWithConcurrency(toUpload, env.concurrency, async (filePath) => {
+      const relativePath = path
+        .relative(hlsDir, filePath)
+        .replaceAll(path.sep, "/");
+      const key = prefix ? `${prefix}/${relativePath}` : relativePath;
+      const file = Bun.file(filePath);
+      const { contentType, cacheControl } = resolveHeaders(filePath);
 
-  await client.write(key, file, {
-    type: contentType,
-    cacheControl,
-  });
+      await client.write(key, file, {
+        type: contentType,
+        cacheControl,
+      });
 
-  console.log(`Uploaded: ${key}`);
-});
+      console.log(`Uploaded: ${key}`);
+    }),
+    (error) => toError("Upload failed.", error),
+  ),
+);
 
 console.log("Upload complete.");
 
@@ -122,32 +135,59 @@ async function resolvePrefix(current: string) {
   }
 }
 
-async function listAllKeys(prefix: string) {
-  const keys = new Set<string>();
-  let startAfter: string | undefined;
-  const listPrefix = prefix ? `${prefix}/` : undefined;
+function listAllKeys(prefix: string) {
+  return ResultAsync.fromPromise(
+    (async () => {
+      const keys = new Set<string>();
+      let startAfter: string | undefined;
+      const listPrefix = prefix ? `${prefix}/` : undefined;
 
-  do {
-    const result = await Bun.S3Client.list(
-      {
-        prefix: listPrefix,
-        maxKeys: 1000,
-        startAfter,
-      },
-      credentials,
-    );
+      do {
+        const result = await Bun.S3Client.list(
+          {
+            prefix: listPrefix,
+            maxKeys: 1000,
+            startAfter,
+          },
+          credentials,
+        );
 
-    const contents = result.contents ?? [];
-    for (const entry of contents) {
-      if (entry.key) keys.add(entry.key);
-    }
+        const contents = result.contents ?? [];
+        for (const entry of contents) {
+          if (entry.key) keys.add(entry.key);
+        }
 
-    if (result.isTruncated && contents.length > 0) {
-      startAfter = contents[contents.length - 1].key;
-    } else {
-      startAfter = undefined;
-    }
-  } while (startAfter);
+        if (result.isTruncated && contents.length > 0) {
+          startAfter = contents[contents.length - 1].key;
+        } else {
+          startAfter = undefined;
+        }
+      } while (startAfter);
 
-  return keys;
+      return keys;
+    })(),
+    (error) => toError("Failed to list bucket contents.", error),
+  );
+}
+
+function unwrapOrExit<T>(result: { isOk(): boolean; value: T; error: Error }) {
+  if (result.isOk()) return result.value;
+  console.error(result.error.message);
+  process.exit(1);
+}
+
+async function unwrapOrExitAsync<T>(
+  result: Promise<{ isOk(): boolean; value: T; error: Error }>,
+) {
+  const resolved = await result;
+  if (resolved.isOk()) return resolved.value;
+  console.error(resolved.error.message);
+  process.exit(1);
+}
+
+function toError(message: string, error: unknown) {
+  if (error instanceof Error) {
+    return new Error(`${message} ${error.message}`);
+  }
+  return new Error(`${message} ${String(error)}`);
 }
