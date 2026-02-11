@@ -6,7 +6,7 @@ import { stdin as input, stdout as output } from "process";
 import { ResultAsync } from "neverthrow";
 import { loadEnv } from "./env";
 import { runWithConcurrency, walkFiles } from "./utils";
-import { selectFiles } from "./tui";
+import { createUploadReporter, selectFiles } from "./tui.tsx";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,26 +69,38 @@ if (!toUpload.length) {
 
 console.log(`Uploading ${toUpload.length} file(s) to ${env.bucket}...`);
 
-await unwrapOrExitAsync(
-  ResultAsync.fromPromise(
-    runWithConcurrency(toUpload, env.concurrency, async (filePath) => {
-      const relativePath = path
-        .relative(hlsDir, filePath)
-        .replaceAll(path.sep, "/");
-      const key = prefix ? `${prefix}/${relativePath}` : relativePath;
-      const file = Bun.file(filePath);
-      const { contentType, cacheControl } = resolveHeaders(filePath);
+const reporter = createUploadReporter(toUpload.length);
+reporter.setSkipped(skipped);
 
-      await client.write(key, file, {
-        type: contentType,
-        cacheControl,
-      });
+try {
+  await unwrapOrExitAsync(
+    ResultAsync.fromPromise(
+      runWithConcurrency(toUpload, env.concurrency, async (filePath) => {
+        const relativePath = path
+          .relative(hlsDir, filePath)
+          .replaceAll(path.sep, "/");
+        const key = prefix ? `${prefix}/${relativePath}` : relativePath;
+        const file = Bun.file(filePath);
+        const { contentType, cacheControl } = resolveHeaders(filePath);
 
-      console.log(`Uploaded: ${key}`);
-    }),
-    (error) => toError("Upload failed.", error),
-  ),
-);
+        reporter.start(relativePath);
+        try {
+          await client.write(key, file, {
+            type: contentType,
+            cacheControl,
+          });
+          reporter.success(relativePath);
+        } catch (error) {
+          reporter.fail(relativePath);
+          throw error;
+        }
+      }),
+      (error) => toError("Upload failed.", error),
+    ),
+  );
+} finally {
+  reporter.close();
+}
 
 console.log("Upload complete.");
 
