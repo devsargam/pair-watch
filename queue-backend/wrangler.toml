@@ -1,0 +1,14 @@
+name = "queue-backend"
+main = "src/index.ts"
+compatibility_date = "2026-02-11"
+
+[[queues.producers]]
+queue = "torrent-ready"
+binding = "TORRENT_QUEUE"
+
+[[r2_buckets]]
+binding = "STATUS_BUCKET"
+bucket_name = "pair-watch"
+
+[vars]
+STATUS_PREFIX = "status"
