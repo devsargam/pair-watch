@@ -9,5 +9,6 @@ pnpm-debug.log*
 videos/*
 !videos/.gitkeep
 hls/
+sync/work/
 .next/
 out/
